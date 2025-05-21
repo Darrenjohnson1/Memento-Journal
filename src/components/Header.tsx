@@ -19,7 +19,7 @@ function Header() {
           priority
         />
         <h1 className="flex flex-col pb-1 text-2xl leading-6 font-bold lg:text-3xl">
-          Memento Journal
+          BrainStorm Journal
         </h1>
       </Link>
       <div className="flex gap-4">

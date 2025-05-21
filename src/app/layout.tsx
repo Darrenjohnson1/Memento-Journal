@@ -4,7 +4,7 @@ import { Toaster } from "@/components/ui/sonner";
 import Header from "@/components/Header";
 
 export const metadata: Metadata = {
-  title: "Memento - AI Journal",
+  title: "BrainStorm - AI Journal",
 };
 
 export default function RootLayout({
@@ -17,7 +17,9 @@ export default function RootLayout({
       <body>
         <div className="flex min-h-screen w-full flex-col">
           <Header />
-          <main className="flex flex-1 flex-col px-4 pt-10 xl:px-8">{children}</main>
+          <main className="flex flex-1 flex-col px-4 pt-10 xl:px-8">
+            {children}
+          </main>
         </div>
         <Toaster />
       </body>
