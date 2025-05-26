@@ -20,7 +20,7 @@ async function Header() {
           priority
         />
         <h1 className="flex flex-col pb-1 text-2xl leading-6 font-bold">
-          BrainStorm <span className="text-sm">AI JOURNAL</span>
+          BrainStorm <span className="text-sm">AI MINDFULNESS JOURNAL</span>
         </h1>
       </Link>
       <div className="flex gap-4">
