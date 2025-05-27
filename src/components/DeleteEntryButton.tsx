@@ -21,6 +21,7 @@ import { Button } from "./ui/button";
 import { Loader2, Trash2Icon } from "lucide-react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { toast } from "sonner";
+import { deleteEntryAction } from "@/actions/entry";
 
 function DeleteEntryButton({ entryId, deleteEntryLocally }: Props) {
   const [isPending, startTransition] = useTransition();
@@ -31,17 +32,22 @@ function DeleteEntryButton({ entryId, deleteEntryLocally }: Props) {
 
   const handleDeleteEntry = () => {
     startTransition(async () => {
-      const [errorMessage] = await deleteEntryAction(entryId);
+      const { errorMessage } = await deleteEntryAction(entryId);
 
       if (!errorMessage) {
         toast.success("Page Deleted", {
           description: "You have successfully deleted the page.",
         });
-      }
-      deleteEntryLocally(entryId);
 
-      if (entryId === entryIdParam) {
-        router.replace("/");
+        deleteEntryLocally(entryId);
+
+        if (entryId === entryIdParam) {
+          router.replace("/");
+        }
+      } else {
+        toast.error("Error Deleting", {
+          description: "There was an error deleting the page.",
+        });
       }
     });
   };
@@ -50,11 +56,12 @@ function DeleteEntryButton({ entryId, deleteEntryLocally }: Props) {
       <AlertDialogTrigger asChild>
         <Button
           className="absolute top-1/2 right-2 size-7 -translate-y-1/2 p-0 opacity-0 group-hover/item:opacity-100 [&_svg]:size-3"
-          variant={"ghost"}
+          variant="ghost"
         >
           <Trash2Icon />
         </Button>
       </AlertDialogTrigger>
+
       <AlertDialogContent>
         <AlertDialogHeader>
           <AlertDialogTitle>Delete Journal Entry?</AlertDialogTitle>
