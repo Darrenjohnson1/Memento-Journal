@@ -18,6 +18,7 @@ import { useRouter } from "next/navigation";
 import { Textarea } from "./ui/textarea";
 import { ArrowUpIcon } from "lucide-react";
 import { AskAIAboutEntryAction } from "@/actions/entry";
+import "@/styles/ai-response.css";
 
 type Props = {
   user: User | null;
@@ -50,10 +51,10 @@ function AskAIButton({ user }: Props) {
 
   const handleInput = () => {
     const textarea = textareaRef.current;
-    if (!textarea) {
-      textarea.style.height = "auto";
-      textarea.style.height = `${textarea.scrollHeight}px`;
-    }
+    if (!textarea) return;
+
+    textarea.style.height = "auto";
+    textarea.style.height = `${textarea.scrollHeight}px`;
   };
 
   const handleClickInput = () => {
@@ -69,6 +70,7 @@ function AskAIButton({ user }: Props) {
     startTransition(async () => {
       const response = await AskAIAboutEntryAction(newQuestions, responses);
       setResponses((prev) => [...prev, response]);
+
       setTimeout(scrollToBottom, 100);
     });
   };

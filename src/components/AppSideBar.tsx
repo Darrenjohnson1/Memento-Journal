@@ -11,7 +11,7 @@ import prisma from "@/db/prisma";
 import { Entry } from "@prisma/client";
 import Link from "next/link";
 import SideBarGroupContent from "./SideBarGroupContent";
-import { Calendar } from "./ui/calendar";
+// import { Calendar } from "./ui/calendar";
 
 async function AppSideBar() {
   const user = await getUser();
@@ -45,7 +45,7 @@ async function AppSideBar() {
               </p>
             )}
           </SidebarGroupLabel>
-          <Calendar />
+          {/* <Calendar /> */}
           <SidebarGroupLabel>
             {user ? (
               "Recent Journal Entries"
