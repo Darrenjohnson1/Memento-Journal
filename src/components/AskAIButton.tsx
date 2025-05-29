@@ -64,13 +64,19 @@ function AskAIButton({ user }: Props) {
   const handleSubmit = () => {
     if (!questionText.trim()) return;
     const newQuestions = [...questions, questionText];
+    setQuestions(newQuestions);
     setQuestionText("");
     setTimeout(scrollToBottom, 100);
 
     startTransition(async () => {
       const response = await AskAIAboutEntryAction(newQuestions, responses);
-      setResponses((prev) => [...prev, response]);
-
+      console.log("AI response:", response);
+      if (typeof response === "string") {
+        setResponses((prev) => [...prev, response]);
+      } else {
+        setResponses((prev) => [...prev, "Null Response"]);
+      }
+      console.log(response);
       setTimeout(scrollToBottom, 100);
     });
   };
@@ -132,7 +138,11 @@ function AskAIButton({ user }: Props) {
             onInput={handleInput}
             onKeyDown={handleKeyDown}
             value={questionText}
-            onChange={(e) => setQuestionText(e.target.value)}
+            onChange={(e) => {
+              const value = e.target.value;
+              setQuestionText(value);
+              console.log(value);
+            }}
           />
           <Button className="ml-auto size-8 rounded-full">
             <ArrowUpIcon className="text-background" />

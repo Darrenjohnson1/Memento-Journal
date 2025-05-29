@@ -112,9 +112,7 @@ export const AskAIAboutEntryAction = async (
       temperature: 0.1,
     });
 
-    return console.log(
-      out.choices[0].message.content || "A problem has occured...",
-    );
+    return out.choices[0].message.content || "A problem has occured...";
 
     return { errorMessage: null };
   } catch (error) {
