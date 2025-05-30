@@ -1,7 +1,9 @@
 import { getUser } from "@/auth/server";
 import AskAIButton from "@/components/AskAIButton";
 import EntryTextInput from "@/components/EntryTextInput";
+import NewDayCarousel from "@/components/NewDayCarousel";
 import NewEntryButton from "@/components/NewEntryButton";
+import { Carousel } from "@/components/ui/carousel";
 import prisma from "@/db/prisma";
 import React from "react";
 
@@ -24,10 +26,10 @@ async function HomePage({ searchParams }: Props) {
   return (
     <div className="flex h-full flex-col items-center gap-4">
       <div className="flex w-full max-w-4xl justify-end gap-2">
-        <AskAIButton user={user} />
         <NewEntryButton user={user} />
       </div>
-      <EntryTextInput entryId={entryId} startingEntryText={entry?.text || ""} />
+      <NewDayCarousel />
+      {/* <EntryTextInput entryId={entryId} startingEntryText={entry?.text || ""} /> */}
     </div>
   );
 }

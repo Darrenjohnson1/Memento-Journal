@@ -11,6 +11,7 @@ import prisma from "@/db/prisma";
 import { Entry } from "@prisma/client";
 import Link from "next/link";
 import SideBarGroupContent from "./SideBarGroupContent";
+import AskAIButton from "./AskAIButton";
 // import { Calendar } from "./ui/calendar";
 
 async function AppSideBar() {
@@ -61,7 +62,7 @@ async function AppSideBar() {
           {user && <SideBarGroupContent entry={entry} />}
         </SidebarGroup>
       </SidebarContent>
-      <SidebarFooter />
+      <SidebarFooter><AskAIButton user={user} /></SidebarFooter>
     </Sidebar>
   );
 }

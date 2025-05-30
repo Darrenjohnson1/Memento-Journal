@@ -38,9 +38,9 @@ function NewEntryButton({ user }: Props) {
     <Button
       onClick={handleClickNewEntryButton}
       variant="secondary"
-      className="w-24"
+      className="w-30"
     >
-      {loading ? <Loader2 className="animate-spin" /> : "New Note"}
+      {loading ? <Loader2 className="animate-spin" /> : "Plan The Day"}
     </Button>
   );
 }
