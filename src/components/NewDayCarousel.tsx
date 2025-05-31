@@ -1,8 +1,9 @@
 "use client";
 
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useRef, useState } from "react";
 import {
   Carousel,
+  CarouselApi,
   CarouselContent,
   CarouselItem,
   CarouselNext,
@@ -10,77 +11,127 @@ import {
 } from "@/components/ui/carousel";
 import { Card, CardContent } from "./ui/card";
 import { Progress } from "./ui/progress";
+import { Textarea } from "./ui/textarea";
+import { Button } from "./ui/button";
+import { ArrowUpIcon } from "lucide-react";
 
-function NewDayCarousel() {
-  const totalItems = 4;
+export function NewDayCarousel() {
+  const textareaRef = useRef<HTMLTextAreaElement>(null);
+
+  const questions = [
+    "What are you looking forward to today?",
+    "What challenges or stressors do you expect today?",
+    "How do you plan to take care of yourself today?",
+    "What would make today feel meaningful or successful?",
+  ];
+
+  const [answers, setAnswers] = useState<string[]>(
+    Array(questions.length).fill(""),
+  );
+  const [questionText, setQuestionText] = useState("");
   const [currentIndex, setCurrentIndex] = useState(0);
+  const [carouselApi, setCarouselApi] = React.useState<CarouselApi | null>(
+    null,
+  );
+
+  const progress = ((currentIndex + 1) / questions.length) * 100;
+
+  useEffect(() => {
+    setQuestionText(answers[currentIndex] || "");
+  }, [currentIndex]);
 
   const handleNext = () => {
-    setCurrentIndex((prev) => Math.min(prev + 1, totalItems - 1));
+    setAnswers((prev) => {
+      const newAnswers = [...prev];
+      newAnswers[currentIndex] = questionText;
+      return newAnswers;
+    });
+    carouselApi?.scrollNext();
+    setCurrentIndex((prev) => Math.min(prev + 1, questions.length - 1));
   };
 
   const handlePrevious = () => {
+    setAnswers((prev) => {
+      const newAnswers = [...prev];
+      newAnswers[currentIndex] = questionText;
+      return newAnswers;
+    });
+    carouselApi?.scrollPrev();
     setCurrentIndex((prev) => Math.max(prev - 1, 0));
   };
 
-  const progress = ((currentIndex + 1) / totalItems) * 100;
+  const handleSubmit = () => {
+    if (!questionText.trim()) return;
+
+    setAnswers((prev) => {
+      const updated = [...prev];
+      updated[currentIndex] = questionText;
+      return updated;
+    });
+
+    if (currentIndex < questions.length - 1) {
+      setCurrentIndex((prev) => prev + 1);
+    } else {
+      // Optional: handle completion
+      console.log("All answers:", answers);
+    }
+    carouselApi?.scrollNext();
+  };
+
+  const handleKeyDown = (e: React.KeyboardEvent<HTMLTextAreaElement>) => {
+    if (e.key === "Enter" && !e.shiftKey) {
+      e.preventDefault();
+      handleSubmit();
+    }
+  };
+
   return (
     <div>
-      <Carousel className="w-full max-w-xs">
-        <CarouselContent>
-          <CarouselItem>
-            <div className="p-1">
-              <Card>
-                <CardContent className="flex aspect-square flex-col justify-center p-6">
-                  <h1 className="pb-5 text-2xl font-semibold">1.</h1>
-                  <div className="text-4xl font-semibold">
-                    What are you looking forward to today?
-                  </div>
-                </CardContent>
-              </Card>
-            </div>
-          </CarouselItem>
-          <CarouselItem>
-            <div className="p-1">
-              <Card>
-                <CardContent className="flex aspect-square flex-col justify-center p-6">
-                  <h1 className="pb-5 text-2xl font-semibold">2.</h1>
-                  <span className="text-4xl font-semibold">
-                    What challenges or stressors do you expect today?
-                  </span>
-                </CardContent>
-              </Card>
-            </div>
-          </CarouselItem>
-          <CarouselItem>
-            <div className="p-1">
-              <Card>
-                <CardContent className="flex aspect-square flex-col justify-center p-6">
-                  <h1 className="pb-5 text-2xl font-semibold">3.</h1>
-                  <span className="text-4xl font-semibold">
-                    How do you plan to take care of yourself today?
-                  </span>
-                </CardContent>
-              </Card>
-            </div>
-          </CarouselItem>
-          <CarouselItem>
-            <div className="p-1">
-              <Card>
-                <CardContent className="flex aspect-square flex-col justify-center p-6">
-                  <h1 className="pb-5 text-2xl font-semibold">4.</h1>
-                  <span className="text-4xl font-semibold">
-                    What would make today feel meaningful or successful?
-                  </span>
-                </CardContent>
-              </Card>
-            </div>
-          </CarouselItem>
+      <Carousel
+        opts={{ watchDrag: false }}
+        setApi={setCarouselApi}
+        className="w-full max-w-xs"
+      >
+        <CarouselContent style={{ userSelect: "none" }}>
+          {questions.map((question, index) => (
+            <CarouselItem key={index}>
+              <div className="p-1">
+                <Card>
+                  <CardContent className="flex aspect-square flex-col justify-center p-6">
+                    <h1 className="pb-5 text-2xl font-semibold">
+                      {index + 1}.
+                    </h1>
+                    <div className="text-4xl font-semibold">{question}</div>
+                  </CardContent>
+                </Card>
+              </div>
+            </CarouselItem>
+          ))}
         </CarouselContent>
-        <CarouselPrevious />
+        <CarouselPrevious onClick={handlePrevious} />
         <CarouselNext onClick={handleNext} />
       </Carousel>
+
       <Progress value={progress} className="mt-10" />
+
+      <div
+        className="mt-10 flex cursor-text flex-col rounded-lg border p-4"
+        onClick={() => textareaRef.current?.focus()}
+      >
+        <Textarea
+          ref={textareaRef}
+          placeholder="How I'm Feeling Now..."
+          value={questionText}
+          onChange={(e) => setQuestionText(e.target.value)}
+          onKeyDown={handleKeyDown}
+          className="placeholder:text-muted-foreground resize-none rounded-none border-none bg-transparent p-0 shadow-none focus-visible:ring-0 focus-visible:ring-offset-0"
+          style={{ minHeight: "0", lineHeight: "normal" }}
+          rows={1}
+        />
+        <Button className="ml-auto size-8 rounded-full" onClick={handleSubmit}>
+          <ArrowUpIcon className="text-background" />
+        </Button>
+      </div>
     </div>
   );
 }

@@ -141,7 +141,6 @@ function AskAIButton({ user }: Props) {
             onChange={(e) => {
               const value = e.target.value;
               setQuestionText(value);
-              console.log(value);
             }}
           />
           <Button className="ml-auto size-8 rounded-full">
