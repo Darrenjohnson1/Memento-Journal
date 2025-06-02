@@ -28,7 +28,6 @@ async function HomePage({ searchParams }: Props) {
       <div className="flex w-full max-w-4xl justify-end gap-2">
         <NewEntryButton user={user} />
       </div>
-      <NewDayCarousel />
       {/* <EntryTextInput entryId={entryId} startingEntryText={entry?.text || ""} /> */}
     </div>
   );

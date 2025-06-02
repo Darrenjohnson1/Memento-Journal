@@ -32,7 +32,7 @@ function SelectEntryButton({ entry }: Props) {
     }
   }, [selectedEntryText, shouldUseGlobalEntryText]);
 
-  const blankEntryText = "Empty Journal Entry";
+  const blankEntryText = "TODAY'S JOURNAL PENDING";
   let entryText = localEntryText || blankEntryText;
   if (shouldUseGlobalEntryText) {
     entryText = selectedEntryText || blankEntryText;
@@ -43,7 +43,10 @@ function SelectEntryButton({ entry }: Props) {
       asChild
       className={`items-start gap-0 pr-12 ${entry.id === entryId ? "bg-sidebar-accent/50" : ""}`}
     >
-      <Link href={`/?entryId=${entry.id}`} className="flex h-fit flex-col">
+      <Link
+        href={`journal/?entryId=${entry.id}`}
+        className="flex h-fit flex-col"
+      >
         <p className="w-full truncate overflow-hidden text-ellipsis whitespace-nowrap">
           {entryText}
         </p>

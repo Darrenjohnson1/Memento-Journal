@@ -14,6 +14,7 @@ import { Progress } from "./ui/progress";
 import { Textarea } from "./ui/textarea";
 import { Button } from "./ui/button";
 import { ArrowUpIcon } from "lucide-react";
+import useEntry from "@/hooks/useEntry";
 
 export function NewDayCarousel() {
   const textareaRef = useRef<HTMLTextAreaElement>(null);
@@ -33,6 +34,7 @@ export function NewDayCarousel() {
   const [carouselApi, setCarouselApi] = React.useState<CarouselApi | null>(
     null,
   );
+  const { entryText, setEntryText } = useEntry();
 
   const progress = ((currentIndex + 1) / questions.length) * 100;
 
@@ -73,7 +75,12 @@ export function NewDayCarousel() {
       setCurrentIndex((prev) => prev + 1);
     } else {
       // Optional: handle completion
-      console.log("All answers:", answers);
+
+      const questionsWithAnswers = Object.fromEntries(
+        questions.map((question, index) => [question, answers[index]]),
+      );
+      console.log("All answers:", questionsWithAnswers);
+      setEntryText(questionsWithAnswers); //Needs to be able to accept the object and then a string summary afterwards
     }
     carouselApi?.scrollNext();
   };
