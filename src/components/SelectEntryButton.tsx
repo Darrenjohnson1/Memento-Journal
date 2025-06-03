@@ -16,7 +16,7 @@ function SelectEntryButton({ entry }: Props) {
   const { entryText: selectedEntryText } = useEntry();
   const [shouldUseGlobalEntryText, setShouldUseGlobalEntryText] =
     useState(false);
-  const [localEntryText, setLocalEntryText] = useState(entry.text);
+  const [localEntryText, setLocalEntryText] = useState(entry.summary);
 
   useEffect(() => {
     if (entryId === entry.id) {

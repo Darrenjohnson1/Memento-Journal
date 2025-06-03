@@ -11,7 +11,7 @@ export const createEntryAction = async (entryId: string) => {
     if (!user) throw new Error("You must be logged in to add a note");
 
     await prisma.entry.create({
-      data: { id: entryId, authorId: user.id, text: "" },
+      data: { id: entryId, authorId: user.id, userResponse: "", summary: "" },
     });
 
     return { errorMessage: null };
@@ -20,14 +20,18 @@ export const createEntryAction = async (entryId: string) => {
   }
 };
 
-export const updateEntryAction = async (entryId: string, text: string) => {
+export const updateEntryAction = async (
+  entryId: string,
+  userResponse: Record<string, string>,
+  summary: string,
+) => {
   try {
-    const user = await getUser;
+    const user = await getUser();
     if (!user) throw new Error("You must be logged in to update a note");
 
     await prisma.entry.update({
       where: { id: entryId },
-      data: { text },
+      data: { userResponse, summary },
     });
 
     return { errorMessage: null };
@@ -62,7 +66,7 @@ export const AskAIAboutEntryAction = async (
     const entry = await prisma.entry.findMany({
       where: { authorId: user.id },
       orderBy: { createdAt: "desc" },
-      select: { text: true, createdAt: true, updatedAt: true },
+      select: { userResponse: true, createdAt: true, updatedAt: true },
     });
 
     if (entry.length === 0) {
@@ -72,7 +76,7 @@ export const AskAIAboutEntryAction = async (
     const formattedEntry = entry
       .map((entry) =>
         `
-        Text: ${entry.text}
+        Text: ${entry.userResponse}
         Created at: ${entry.createdAt}
         Last updated: ${entry.updatedAt}
       `.trim(),
@@ -115,6 +119,57 @@ export const AskAIAboutEntryAction = async (
     return out.choices[0].message.content || "A problem has occured...";
 
     return { errorMessage: null };
+  } catch (error) {
+    return handleError(error);
+  }
+};
+
+type EntryObject = {
+  [key: string]: string | undefined;
+};
+
+export const AISummaryAction = async (entry: EntryObject) => {
+  try {
+    const messages = [];
+
+    const keys = Object.keys(entry);
+    for (let i = 0; i < keys.length; i++) {
+      const question = keys[i];
+      const answer = entry[question];
+      if (answer) {
+        messages.push({ role: "user", content: question });
+        messages.push({ role: "assistant", content: answer });
+      }
+    }
+
+    const out = await HfInference.chatCompletion({
+      model: "Qwen/Qwen3-32B",
+      provider: "cerebras",
+      messages: [
+        {
+          role: "system",
+          content: `
+            You are a helpful assistant that summarizes a user's journal entry. 
+            Assume all responses to questions are related to the user's experiences. 
+            Keep answers succinct and return a paragraph summary in second person, present tense looking to the future.
+
+            If the responses don't make sense return something about trying to set yourself up for success instead of just entering random answers.
+          `,
+        },
+        ...messages,
+      ],
+      max_tokens: 512,
+      temperature: 0.1,
+    });
+    const rawSummary =
+      out.choices?.[0]?.message?.content || "Error summarizing entry.";
+
+    // Remove any <think>...</think> block (including multi-line content)
+    const cleanSummary = rawSummary
+      .replace(/<think>[\s\S]*?<\/think>/gi, "")
+      .trim();
+    console.log(cleanSummary);
+    return cleanSummary;
   } catch (error) {
     return handleError(error);
   }

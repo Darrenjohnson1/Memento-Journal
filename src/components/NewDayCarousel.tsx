@@ -15,10 +15,12 @@ import { Textarea } from "./ui/textarea";
 import { Button } from "./ui/button";
 import { ArrowUpIcon } from "lucide-react";
 import useEntry from "@/hooks/useEntry";
+import { AISummaryAction, updateEntryAction } from "@/actions/entry";
+import { useSearchParams } from "next/navigation";
 
 export function NewDayCarousel() {
   const textareaRef = useRef<HTMLTextAreaElement>(null);
-
+  const entryIdParam = useSearchParams().get("entryId") || "";
   const questions = [
     "What are you looking forward to today?",
     "What challenges or stressors do you expect today?",
@@ -36,7 +38,7 @@ export function NewDayCarousel() {
   );
   const { entryText, setEntryText } = useEntry();
 
-  const progress = ((currentIndex + 1) / questions.length) * 100;
+  const progress = ((currentIndex + 0) / questions.length) * 100;
 
   useEffect(() => {
     setQuestionText(answers[currentIndex] || "");
@@ -80,7 +82,18 @@ export function NewDayCarousel() {
         questions.map((question, index) => [question, answers[index]]),
       );
       console.log("All answers:", questionsWithAnswers);
-      setEntryText(questionsWithAnswers); //Needs to be able to accept the object and then a string summary afterwards
+      AISummaryAction(questionsWithAnswers).then((summary) => {
+        if (typeof summary === "string") {
+          setEntryText(summary);
+          updateEntryAction(entryIdParam, questionsWithAnswers, summary);
+        } else {
+          updateEntryAction(
+            entryIdParam,
+            questionsWithAnswers,
+            "Error summarizing entry.",
+          );
+        }
+      });
     }
     carouselApi?.scrollNext();
   };
