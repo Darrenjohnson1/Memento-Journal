@@ -97,13 +97,13 @@ function AskAIButton({ user }: Props) {
   return (
     <Dialog open={open} onOpenChange={handleOnOpenChange}>
       <DialogTrigger asChild>
-        <Button variant="secondary">Let's Talk</Button>
+        <Button>Let's Jibber-Jabber</Button>
       </DialogTrigger>
       <DialogContent className="custom-scrollbar flex h-[85vh] max-w-4xl flex-col overflow-y-auto">
         <DialogHeader>
-          <DialogTitle>Ask AI About Your Journal</DialogTitle>
+          <DialogTitle>Jibber-Jabber with your AI assistant</DialogTitle>
           <DialogDescription>
-            Find out insights about yourself, using AI.
+            Talk with your journal and discover insights using AI.
           </DialogDescription>
         </DialogHeader>
         <div className="mt-4 flex flex-col gap-8">

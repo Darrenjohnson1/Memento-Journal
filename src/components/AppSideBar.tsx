@@ -12,6 +12,9 @@ import { Entry } from "@prisma/client";
 import Link from "next/link";
 import SideBarGroupContent from "./SideBarGroupContent";
 import AskAIButton from "./AskAIButton";
+import { Button } from "./ui/button";
+import LogOutButton from "./LogOutButton";
+import UserAccount from "./UserAccount";
 // import { Calendar } from "./ui/calendar";
 
 async function AppSideBar() {
@@ -30,22 +33,28 @@ async function AppSideBar() {
     });
   }
   return (
-    <Sidebar>
-      <SidebarHeader />
+    <Sidebar side="right" variant="floating">
+      <SidebarHeader>
+        {user ? (
+          <div className="flex justify-between">
+            <UserAccount user={user} />
+            <LogOutButton />
+          </div>
+        ) : (
+          <>
+            <Button asChild>
+              <Link href="/sign-up" className="">
+                Sign Up
+              </Link>
+            </Button>
+            <Button asChild variant="outline">
+              <Link href="/login">Login</Link>
+            </Button>
+          </>
+        )}
+      </SidebarHeader>
       <SidebarContent>
         <SidebarGroup>
-          <SidebarGroupLabel>
-            {user ? (
-              "Dates Logged"
-            ) : (
-              <p>
-                No User Data:{" "}
-                <Link className="underline" href="/login">
-                  Login
-                </Link>
-              </p>
-            )}
-          </SidebarGroupLabel>
           {/* <Calendar /> */}
           <SidebarGroupLabel>
             {user ? (
@@ -62,7 +71,9 @@ async function AppSideBar() {
           {user && <SideBarGroupContent entry={entry} />}
         </SidebarGroup>
       </SidebarContent>
-      <SidebarFooter><AskAIButton user={user} /></SidebarFooter>
+      <SidebarFooter>
+        <AskAIButton user={user} />
+      </SidebarFooter>
     </Sidebar>
   );
 }

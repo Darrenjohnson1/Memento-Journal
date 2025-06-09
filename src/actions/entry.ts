@@ -66,7 +66,12 @@ export const AskAIAboutEntryAction = async (
     const entry = await prisma.entry.findMany({
       where: { authorId: user.id },
       orderBy: { createdAt: "desc" },
-      select: { userResponse: true, createdAt: true, updatedAt: true },
+      select: {
+        userResponse: true,
+        createdAt: true,
+        updatedAt: true,
+        summary: true,
+      },
     });
 
     if (entry.length === 0) {
@@ -76,9 +81,10 @@ export const AskAIAboutEntryAction = async (
     const formattedEntry = entry
       .map((entry) =>
         `
-        Text: ${entry.userResponse}
+        Text: ${JSON.stringify(entry.userResponse)}
         Created at: ${entry.createdAt}
         Last updated: ${entry.updatedAt}
+        Previous AI Summary: ${entry.summary}
       `.trim(),
       )
       .join("\n");
@@ -107,7 +113,7 @@ export const AskAIAboutEntryAction = async (
         messages.push({ role: "assistant", content: responses[i] });
       }
     }
-
+    console.log(messages);
     const out = await HfInference.chatCompletion({
       model: "Qwen/Qwen3-32B",
       provider: "cerebras",
@@ -115,7 +121,7 @@ export const AskAIAboutEntryAction = async (
       max_tokens: 512,
       temperature: 0.1,
     });
-
+    console.log(out.choices[0].message.content);
     return out.choices[0].message.content || "A problem has occured...";
 
     return { errorMessage: null };
@@ -152,6 +158,15 @@ export const AISummaryAction = async (entry: EntryObject) => {
             You are a helpful assistant that summarizes a user's journal entry. 
             Assume all responses to questions are related to the user's experiences. 
             Keep answers succinct and return a paragraph summary in second person, present tense looking to the future.
+
+            Return all information in the format of valid JSON. All summaries should have a title a summarization, and 3 relevant tags. It should in the format below:
+            
+            {
+              "title": "Enter a Passage Title Here",
+              "summary": "Enter your Summary Here",
+              "tags": ["tag1", "tag2", "tag3"],
+              "sentiment": 0.0
+            }
 
             If the responses don't make sense return something about trying to set yourself up for success instead of just entering random answers.
           `,

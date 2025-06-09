@@ -4,6 +4,7 @@ import React from "react";
 import { Button } from "./ui/button";
 import { getUser } from "@/auth/server";
 import LogOutButton from "./LogOutButton";
+import { SidebarTrigger } from "./ui/sidebar";
 
 async function Header() {
   const user = await getUser();
@@ -20,12 +21,12 @@ async function Header() {
           priority
         />
         <h1 className="flex flex-col pb-1 text-2xl leading-6 font-bold">
-          BrainStorm <span className="text-sm">AI MINDFULNESS JOURNAL</span>
+          JIBBER JOURNAL <span className="text-sm">AI MINDFULNESS JOURNAL</span>
         </h1>
       </Link>
       <div className="flex gap-4">
         {user ? (
-          <LogOutButton />
+          <SidebarTrigger />
         ) : (
           <>
             <Button asChild>

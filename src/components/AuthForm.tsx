@@ -10,6 +10,7 @@ import { Loader2 } from "lucide-react";
 import Link from "next/link";
 import { toast } from "sonner";
 import { loginAction, signUpAction } from "@/actions/users";
+import { useSidebar } from "./ui/sidebar";
 
 type Props = {
   type: "login" | "signUp";
@@ -19,6 +20,7 @@ function AuthForm({ type }: Props) {
   const isLoginForm = type === "login";
   const router = useRouter();
   const [isPending, startTransition] = useTransition();
+  const { toggleSidebar } = useSidebar();
   const handleSubmit = (formData: FormData) => {
     startTransition(async () => {
       const email = formData.get("email") as string;
@@ -42,6 +44,7 @@ function AuthForm({ type }: Props) {
           description,
         });
         router.replace("/");
+        toggleSidebar();
       } else {
         toast.error(title, {
           description: errorMessage,

@@ -6,10 +6,12 @@ import { Loader2 } from "lucide-react";
 import { toast } from "sonner";
 import { useRouter } from "next/navigation";
 import { logOutAction } from "@/actions/users";
+import { useSidebar } from "./ui/sidebar";
 
 function LogOutButton() {
   const [loading, setLoading] = useState(false);
   const router = useRouter();
+  const { toggleSidebar } = useSidebar();
 
   const handleLogOut = async () => {
     setLoading(true);
@@ -20,6 +22,7 @@ function LogOutButton() {
       toast.success("Logged out", {
         description: "You have been successfully logged out",
       });
+      toggleSidebar();
       router.push("/");
     } else {
       toast.error("Error logging out", {

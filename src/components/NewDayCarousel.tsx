@@ -16,7 +16,7 @@ import { Button } from "./ui/button";
 import { ArrowUpIcon } from "lucide-react";
 import useEntry from "@/hooks/useEntry";
 import { AISummaryAction, updateEntryAction } from "@/actions/entry";
-import { useSearchParams } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 
 export function NewDayCarousel() {
   const textareaRef = useRef<HTMLTextAreaElement>(null);
@@ -37,6 +37,8 @@ export function NewDayCarousel() {
     null,
   );
   const { entryText, setEntryText } = useEntry();
+
+  const router = useRouter();
 
   const progress = ((currentIndex + 0) / questions.length) * 100;
 
@@ -93,6 +95,7 @@ export function NewDayCarousel() {
             "Error summarizing entry.",
           );
         }
+        router.push(`journal/?entryId=${entryIdParam}`);
       });
     }
     carouselApi?.scrollNext();
