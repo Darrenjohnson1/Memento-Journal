@@ -1,6 +1,7 @@
 "use client";
-import React from "react";
+import React, { Fragment } from "react";
 import { Badge } from "./ui/badge";
+import { Separator } from "./ui/separator";
 
 type Props = {
   entry: {
@@ -24,19 +25,14 @@ function JournalEntry({ entry }: any) {
   if (error) {
     return <div className="text-red-500">{error}</div>;
   }
+  console.log(entry.userResponse);
 
   return (
     <div>
       <div>
         <h2 className="mt-6 text-3xl font-bold">{entryObject.title}</h2>
         <p className="mt-5 text-lg">{entryObject.summary}</p>
-        <h1 className="mt-10 text-lg font-medium">
-          {entry?.createdAt.toLocaleString("en-US", {
-            year: "numeric",
-            month: "long",
-            day: "numeric",
-          })}
-        </h1>
+
         <Badge
           className="mt-5 mr-1"
           style={{
@@ -66,6 +62,15 @@ function JournalEntry({ entry }: any) {
           </Badge>
         ))}
       </div>
+      <Separator className="mt-5" />
+      {Object.entries(entry.userResponse).map(([question, answer], index) => (
+        <div className="flex flex-col">
+          <p key={index} className="question">
+            <strong>{question}</strong>:
+          </p>
+          <p className="response">{answer || <em>No response</em>}</p>
+        </div>
+      ))}
     </div>
   );
 }

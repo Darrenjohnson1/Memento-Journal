@@ -67,3 +67,14 @@
 .bot-response u {
   text-decoration: underline;
 }
+
+.question {
+  background-color: rgb(240, 240, 240);
+  width: fit-content;
+}
+
+.response {
+  background-color: rgb(209, 209, 209);
+  justify-content: right;
+  width: fit-content;
+}
