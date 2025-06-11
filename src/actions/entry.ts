@@ -41,21 +41,19 @@ export const createEntryAction = async (entryId: string) => {
         summary: true,
       },
     });
-
-    if (entry.length === 0) {
-      return "You don't have any journal entries yet";
-    }
-
-    const formattedEntry = entry
-      .map((entry) =>
-        `
+    let formattedEntry = "";
+    if (entry.length > 0) {
+      let formattedEntry = entry
+        .map((entry) =>
+          `
         Text: ${JSON.stringify(entry.userResponse)}
         Created at: ${entry.createdAt}
         Last updated: ${entry.updatedAt}
         Previous AI Summary: ${entry.summary}
       `.trim(),
-      )
-      .join("\n");
+        )
+        .join("\n");
+    }
 
     const messages = [
       {
@@ -115,6 +113,7 @@ export const createEntryAction = async (entryId: string) => {
         authorId: user.id,
         userResponse: cleanSummary,
         summary: "",
+        isOpen: "open",
       },
     });
 

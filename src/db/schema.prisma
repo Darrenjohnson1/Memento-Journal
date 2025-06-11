@@ -7,19 +7,28 @@ generator client {
   provider = "prisma-client-js"
 }
 
+enum EntryStatus {
+  open
+  partial
+  partial_open
+  closed
+}
+
 model User {
-  id        String      @id @default(uuid())
-  email     String      @unique
-  role      Role        @default(USER)
-  entry     Entry[]
-  createdAt DateTime    @default(now())
-  updatedAt DateTime    @updatedAt @default(now())
+  id         String      @id @default(uuid())
+  email      String      @unique
+  role       Role        @default(USER)
+  preference String?
+  entry      Entry[]
+  createdAt  DateTime    @default(now())
+  updatedAt  DateTime    @updatedAt @default(now())
 }
 
 model Entry {
   id           String      @id @default(uuid())
   userResponse Json
   summary      String
+  isOpen       EntryStatus
   author       User        @relation(fields: [authorId], references: [id])
   authorId     String
   createdAt    DateTime    @default(now())
