@@ -19,11 +19,11 @@ function JournalEntry({ entry }: any) {
   try {
     entryObject = JSON.parse(entry.summary);
   } catch (e) {
-    error = "Invalid JSON in summary field.";
+    error = "Loading...";
   }
 
   if (error) {
-    return <div className="text-red-500">{error}</div>;
+    return <div className="animate-pulse">{error}</div>;
   }
   console.log(entry.userResponse);
 
@@ -70,7 +70,7 @@ function JournalEntry({ entry }: any) {
         </p>
       </div>
       <Separator className="mt-5" />
-      <h2 className="mt-6 mb-5 text-3xl font-bold">Thoughts</h2>
+      <h2 className="mt-6 mb-5 text-3xl font-bold">Insights</h2>
       {Object.entries(entry.userResponse).map(([question, answer], index) => (
         <div className="flex flex-col">
           <p key={index} className="question">

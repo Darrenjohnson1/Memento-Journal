@@ -15,34 +15,25 @@ import { Textarea } from "./ui/textarea";
 import { Button } from "./ui/button";
 import { ArrowUpIcon } from "lucide-react";
 import useEntry from "@/hooks/useEntry";
-import {
-  AISummaryAction,
-  getUserQuestionsAction,
-  updateEntryAction,
-} from "@/actions/entry";
+import { AISummaryAction, updateEntryAction } from "@/actions/entry";
 import { useRouter, useSearchParams } from "next/navigation";
 
-export function NewDayCarousel({ questions }: any) {
+export function NewDayCarousel({ entry }: any) {
   const textareaRef = useRef<HTMLTextAreaElement>(null);
   const entryIdParam = useSearchParams().get("entryId") || "";
 
-  // const questions = [
-  //   "What are you looking forward to today?",
-  //   "What challenges or stressors do you expect today?",
-  //   "How do you plan to take care of yourself today?",
-  //   "What would make today feel meaningful or successful?",
-  // ];
+  // Parse structured question data from entry
+  const questions: { question: string; inputType: number }[] = JSON.parse(
+    entry.userResponse,
+  );
 
   const [answers, setAnswers] = useState<string[]>(
     Array(questions.length).fill(""),
   );
   const [questionText, setQuestionText] = useState("");
   const [currentIndex, setCurrentIndex] = useState(0);
-  const [carouselApi, setCarouselApi] = React.useState<CarouselApi | null>(
-    null,
-  );
+  const [carouselApi, setCarouselApi] = useState<CarouselApi | null>(null);
   const { entryText, setEntryText } = useEntry();
-
   const router = useRouter();
 
   const progress = ((currentIndex + 0) / questions.length) * 100;
@@ -83,12 +74,10 @@ export function NewDayCarousel({ questions }: any) {
     if (currentIndex < questions.length - 1) {
       setCurrentIndex((prev) => prev + 1);
     } else {
-      // Optional: handle completion
-
       const questionsWithAnswers = Object.fromEntries(
-        questions.map((question, index) => [question, answers[index]]),
+        questions.map((q, index) => [q.question, answers[index]]),
       );
-      console.log("All answers:", questionsWithAnswers);
+
       AISummaryAction(questionsWithAnswers).then((summary) => {
         if (typeof summary === "string") {
           setEntryText(summary);
@@ -103,6 +92,7 @@ export function NewDayCarousel({ questions }: any) {
         router.push(`journal/?entryId=${entryIdParam}`);
       });
     }
+
     carouselApi?.scrollNext();
   };
 
@@ -121,7 +111,7 @@ export function NewDayCarousel({ questions }: any) {
         className="w-full max-w-xs"
       >
         <CarouselContent style={{ userSelect: "none" }}>
-          {questions.map((question, index) => (
+          {questions.map((q, index) => (
             <CarouselItem key={index}>
               <div className="p-1">
                 <Card>
@@ -129,7 +119,7 @@ export function NewDayCarousel({ questions }: any) {
                     <h1 className="pb-5 text-2xl font-semibold">
                       {index + 1}.
                     </h1>
-                    <div className="text-4xl font-semibold">{question}</div>
+                    <div className="text-2xl font-semibold">{q.question}</div>
                   </CardContent>
                 </Card>
               </div>

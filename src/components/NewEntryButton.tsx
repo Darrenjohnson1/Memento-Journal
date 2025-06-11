@@ -26,11 +26,11 @@ function NewEntryButton({ user }: Props) {
 
       const uuid = uuidv4();
 
-      router.push(`plan/?entryId=${uuid}`);
       toast.success("Let's Get Ready For The Day", {
         description: "You have started a new journal entry",
       });
       await createEntryAction(uuid);
+      router.push(`plan/?entryId=${uuid}`);
 
       setLoading(false);
     }
