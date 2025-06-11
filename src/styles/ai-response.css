@@ -71,10 +71,20 @@
 .question {
   background-color: rgb(240, 240, 240);
   width: fit-content;
+  max-width: 85%;
+  align-self: start;
+  padding: 5px 10px;
+  margin-top: 10px;
+  border-radius: 0 8px 8px 8px;
 }
 
 .response {
-  background-color: rgb(209, 209, 209);
+  background-color: #cc99ff;
   justify-content: right;
   width: fit-content;
+  max-width: 85%;
+  align-self: end;
+  padding: 5px 10px;
+  margin-top: 10px;
+  border-radius: 8px 8px 0 8px;
 }

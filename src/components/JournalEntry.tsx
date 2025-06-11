@@ -30,7 +30,7 @@ function JournalEntry({ entry }: any) {
   return (
     <div>
       <div>
-        <h2 className="mt-6 text-3xl font-bold">{entryObject.title}</h2>
+        <h2 className="mt-6 text-4xl font-bold">{entryObject.title}</h2>
         <p className="mt-5 text-lg">{entryObject.summary}</p>
 
         <Badge
@@ -63,6 +63,14 @@ function JournalEntry({ entry }: any) {
         ))}
       </div>
       <Separator className="mt-5" />
+      <div>
+        <h2 className="mt-6 text-3xl font-bold">Journal</h2>
+        <p className="mt-5 text-lg">
+          {entryObject.journal || <em>No Journal Entry</em>}
+        </p>
+      </div>
+      <Separator className="mt-5" />
+      <h2 className="mt-6 mb-5 text-3xl font-bold">Thoughts</h2>
       {Object.entries(entry.userResponse).map(([question, answer], index) => (
         <div className="flex flex-col">
           <p key={index} className="question">

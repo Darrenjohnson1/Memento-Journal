@@ -15,18 +15,23 @@ import { Textarea } from "./ui/textarea";
 import { Button } from "./ui/button";
 import { ArrowUpIcon } from "lucide-react";
 import useEntry from "@/hooks/useEntry";
-import { AISummaryAction, updateEntryAction } from "@/actions/entry";
+import {
+  AISummaryAction,
+  getUserQuestionsAction,
+  updateEntryAction,
+} from "@/actions/entry";
 import { useRouter, useSearchParams } from "next/navigation";
 
-export function NewDayCarousel() {
+export function NewDayCarousel({ questions }: any) {
   const textareaRef = useRef<HTMLTextAreaElement>(null);
   const entryIdParam = useSearchParams().get("entryId") || "";
-  const questions = [
-    "What are you looking forward to today?",
-    "What challenges or stressors do you expect today?",
-    "How do you plan to take care of yourself today?",
-    "What would make today feel meaningful or successful?",
-  ];
+
+  // const questions = [
+  //   "What are you looking forward to today?",
+  //   "What challenges or stressors do you expect today?",
+  //   "How do you plan to take care of yourself today?",
+  //   "What would make today feel meaningful or successful?",
+  // ];
 
   const [answers, setAnswers] = useState<string[]>(
     Array(questions.length).fill(""),

@@ -7,7 +7,7 @@ import { Loader2 } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { v4 as uuidv4 } from "uuid";
 import { toast } from "sonner";
-import { createEntryAction } from "@/actions/entry";
+import { createEntryAction, getUserQuestionsAction } from "@/actions/entry";
 
 type Props = {
   user: User | null;
@@ -27,10 +27,11 @@ function NewEntryButton({ user }: Props) {
       const uuid = uuidv4();
 
       router.push(`plan/?entryId=${uuid}`);
-      await createEntryAction(uuid);
       toast.success("Let's Get Ready For The Day", {
         description: "You have started a new journal entry",
       });
+      await createEntryAction(uuid);
+
       setLoading(false);
     }
   };
@@ -40,7 +41,7 @@ function NewEntryButton({ user }: Props) {
       variant="secondary"
       className="w-30"
     >
-      {loading ? <Loader2 className="animate-spin" /> : "Plan The Day"}
+      {loading ? <Loader2 className="animate-spin" /> : "Forecast"}
     </Button>
   );
 }

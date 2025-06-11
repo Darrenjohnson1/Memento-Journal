@@ -31,7 +31,7 @@ async function page({ searchParams }: Props) {
 
   return (
     <div className="flex h-full flex-col items-center gap-4">
-      <div className="bg-popover relative flex h-24 w-full items-center justify-between border-b-1">
+      <div className="bg-popover relative flex h-24 w-full max-w-4xl items-center justify-between border-b-1">
         <h1 className="mt-10 text-3xl font-medium">
           {entry?.createdAt.toLocaleString("en-US", {
             year: "numeric",
@@ -44,6 +44,17 @@ async function page({ searchParams }: Props) {
       <div className="flex w-full max-w-4xl flex-col justify-center gap-2">
         <JournalEntry entry={entry} />
       </div>
+      {entry.append ? (
+        <div className="bg-popover relative flex h-24 w-full max-w-4xl flex-col items-center justify-center border-b-1">
+          <FollowUpButton />
+        </div>
+      ) : (
+        <div className="bg-popover relative flex h-24 w-full max-w-4xl flex-col items-center justify-center gap-5 border-b-1">
+          <p className="mt-5 text-lg"></p>
+          {entry.append}
+          <FollowUpButton />
+        </div>
+      )}
     </div>
   );
 }
