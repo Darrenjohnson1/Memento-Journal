@@ -19,6 +19,13 @@ import { AISummaryAction, updateEntryAction } from "@/actions/entry";
 import { useRouter, useSearchParams } from "next/navigation";
 
 export function NewDayCarousel({ entry }: any) {
+  if (!entry || !entry.userResponse) {
+    return (
+      <div className="p-4 text-center text-red-500">
+        <p>Entry not found or not generated.</p>
+      </div>
+    );
+  }
   const textareaRef = useRef<HTMLTextAreaElement>(null);
   const entryIdParam = useSearchParams().get("entryId") || "";
 

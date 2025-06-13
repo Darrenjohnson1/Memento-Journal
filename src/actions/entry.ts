@@ -4,6 +4,7 @@ import { getUser } from "@/auth/server";
 import prisma from "@/db/prisma";
 import HfInference from "@/huggingface";
 import { handleError } from "@/lib/utils";
+import { Prisma } from "@prisma/client";
 import { NextResponse } from "next/server";
 
 export const createEntryAction = async (entryId: string) => {
@@ -107,15 +108,36 @@ export const createEntryAction = async (entryId: string) => {
       .trim();
 
     console.log(cleanSummary);
-    await prisma.entry.create({
-      data: {
-        id: entryId,
-        authorId: user.id,
-        userResponse: cleanSummary,
-        summary: "",
-        isOpen: "open",
-      },
-    });
+    let parsedSummary = JSON.parse(cleanSummary);
+    try {
+      const createdEntry = await prisma.entry.create({
+        data: {
+          id: entryId,
+          authorId: user.id,
+          userResponse: cleanSummary, // ← must be valid JSON
+          summary: "Open Entry",
+          isOpen: "open", // ← must match enum
+        },
+      });
+
+      return { success: true, data: createdEntry };
+    } catch (err) {
+      if (err instanceof Prisma.PrismaClientKnownRequestError) {
+        console.error("🛑 Known Prisma Error:");
+        console.error("Code:", err.code);
+        console.error("Message:", err.message);
+        console.error("Meta:", err.meta);
+      } else if (err instanceof Prisma.PrismaClientValidationError) {
+        console.error("🛠️ Validation Error:", err.message);
+      } else {
+        console.error("❓ Unknown Error:", err);
+      }
+
+      return {
+        success: false,
+        message: "Failed to create entry. Check server logs for more details.",
+      };
+    }
 
     return { errorMessage: null };
   } catch (error) {

@@ -58,7 +58,7 @@ function JournalEntry({ entry }: any) {
         </Badge>
         {entryObject.tags.map((tag: any, index: any) => (
           <Badge key={index} className="mr-1">
-            {tag}
+            {tag.charAt(0).toUpperCase() + tag.slice(1)}
           </Badge>
         ))}
       </div>
