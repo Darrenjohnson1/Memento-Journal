@@ -94,6 +94,16 @@ function AskAIButton({ user }: Props) {
       handleSubmit();
     }
   };
+
+  const phrases = [
+    "What are you curious about?",
+    "Curious about anything recently?",
+    "I know about you. Ask.",
+    "I'm here if you need me.",
+    "What would you like to know?",
+  ];
+
+  const randomPhrase = phrases[Math.floor(Math.random() * phrases.length)];
   return (
     <Dialog open={open} onOpenChange={handleOnOpenChange}>
       <DialogTrigger asChild>
@@ -107,14 +117,17 @@ function AskAIButton({ user }: Props) {
           </DialogDescription>
         </DialogHeader>
         <div className="mt-4 flex flex-col gap-8">
+          <p className="bot-response question text-muted-foreground text-sm">
+            {randomPhrase}
+          </p>
           {questions.map((question, index) => (
             <Fragment key={index}>
-              <p className="ml-auto max-w-[60%] rounded-md px-2 py-1 text-sm">
+              <p className="response ml-auto max-w-[60%] rounded-md px-2 py-1 text-sm">
                 {question}
               </p>
               {responses[index] && (
                 <p
-                  className="bot-reponse text-muted-foreground text-sm"
+                  className="bot-reponse question text-muted-foreground text-sm"
                   dangerouslySetInnerHTML={{ __html: responses[index] }}
                 />
               )}
