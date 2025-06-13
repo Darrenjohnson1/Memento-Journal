@@ -21,16 +21,25 @@ async function AppSideBar() {
   const user = await getUser();
 
   let entry: Entry[] = [];
+  try {
+    if (user) {
+      entry = await prisma.entry.findMany({
+        where: {
+          authorId: user.id,
+        },
+        orderBy: {
+          updatedAt: "desc",
+        },
+      });
+    }
+  } catch (error: any) {
+    if (error.code === "P1001") {
+      // P1001: Can't reach the database
+      return console.log("Can't reach the database to authenticate user");
+    }
 
-  if (user) {
-    entry = await prisma.entry.findMany({
-      where: {
-        authorId: user.id,
-      },
-      orderBy: {
-        updatedAt: "desc",
-      },
-    });
+    // Re-throw or handle other errors
+    throw error;
   }
   return (
     <Sidebar side="right" variant="floating">
@@ -54,6 +63,14 @@ async function AppSideBar() {
         )}
       </SidebarHeader>
       <SidebarContent>
+        <SidebarGroup>
+          <SidebarGroupLabel>Incomplete Entry</SidebarGroupLabel>
+          {user && <SideBarGroupContent entry={entry} />}
+        </SidebarGroup>
+        <SidebarGroup>
+          <SidebarGroupLabel>Come Back Later</SidebarGroupLabel>
+          {user && <SideBarGroupContent entry={entry} />}
+        </SidebarGroup>
         <SidebarGroup>
           {/* <Calendar /> */}
           <SidebarGroupLabel>

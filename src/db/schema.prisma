@@ -26,6 +26,7 @@ model User {
 
 model Entry {
   id           String      @id @default(uuid())
+  journalEntry Json
   userResponse Json
   summary      String
   isOpen       EntryStatus

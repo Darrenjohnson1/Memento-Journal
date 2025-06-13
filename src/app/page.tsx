@@ -2,6 +2,7 @@ import { getUser } from "@/auth/server";
 import AskAIButton from "@/components/AskAIButton";
 import EntryTextInput from "@/components/EntryTextInput";
 import NewDayCarousel from "@/components/NewDayCarousel";
+import NewDayJournal from "@/components/NewDayJournal";
 import NewEntryButton from "@/components/NewEntryButton";
 import { Carousel } from "@/components/ui/carousel";
 import prisma from "@/db/prisma";
@@ -19,15 +20,23 @@ async function HomePage({ searchParams }: Props) {
     ? entryIdParam![0]
     : entryIdParam || "";
 
-  const entry = await prisma.entry.findUnique({
-    where: { id: entryId, authorId: user?.id },
-  });
+  try {
+    const entry = await prisma.entry.findUnique({
+      where: { id: entryId, authorId: user?.id },
+    });
+  } catch (error: any) {
+    if (error.code === "P1001") {
+      // P1001: Can't reach the database
+      return <p>Can't reach the database to authenticate user.</p>;
+    }
+
+    // Re-throw or handle other errors
+    throw error;
+  }
 
   return (
     <div className="flex h-full flex-col items-center gap-4">
-      <div className="flex w-full max-w-4xl justify-end gap-2">
-        <NewEntryButton user={user} />
-      </div>
+      <NewDayJournal user={user} />
       {/* <EntryTextInput entryId={entryId} startingEntryText={entry?.text || ""} /> */}
     </div>
   );

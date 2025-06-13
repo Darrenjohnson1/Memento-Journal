@@ -58,7 +58,11 @@ function SelectEntryButton({ entry }: Props) {
       className={`items-start gap-0 pr-12 ${entry.id === entryId ? "bg-sidebar-accent/50" : ""}`}
     >
       <Link
-        href={`journal/?entryId=${entry.id}`}
+        href={
+          entry.isOpen === "open"
+            ? `plan/?entryId=${entry.id}`
+            : `journal/?entryId=${entry.id}`
+        }
         className="flex h-fit flex-col"
       >
         <p className="w-full truncate overflow-hidden text-ellipsis whitespace-nowrap">
@@ -69,29 +73,33 @@ function SelectEntryButton({ entry }: Props) {
           <p className="text-muted-foreground text-xs">
             {entry.updatedAt.toLocaleDateString()}
           </p>
-          <Badge
-            className=""
-            style={{
-              backgroundColor:
-                entryObject.sentiment < 0
-                  ? "yellow"
-                  : entryObject.sentiment > 0
-                    ? "green"
-                    : "gray",
-              color:
-                entryObject.sentiment < 0
-                  ? "black"
-                  : entryObject.sentiment > 0
-                    ? "white"
-                    : "white", // text color on gray
-            }}
-          >
-            {entryObject.sentiment > 0
-              ? "Positive"
-              : entryObject.sentiment < 0
-                ? "Challenging"
-                : "Neutral"}
-          </Badge>
+          {entry.isOpen !== "closed" ? (
+            ""
+          ) : (
+            <Badge
+              className=""
+              style={{
+                backgroundColor:
+                  entryObject.sentiment < 0
+                    ? "yellow"
+                    : entryObject.sentiment > 0
+                      ? "green"
+                      : "gray",
+                color:
+                  entryObject.sentiment < 0
+                    ? "black"
+                    : entryObject.sentiment > 0
+                      ? "white"
+                      : "white", // text color on gray
+              }}
+            >
+              {entryObject.sentiment > 0
+                ? "Positive"
+                : entryObject.sentiment < 0
+                  ? "Challenging"
+                  : "Neutral"}
+            </Badge>
+          )}
         </div>
       </Link>
     </SidebarMenuButton>

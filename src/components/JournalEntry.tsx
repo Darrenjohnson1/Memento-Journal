@@ -19,13 +19,13 @@ function JournalEntry({ entry }: any) {
   try {
     entryObject = JSON.parse(entry.summary);
   } catch (e) {
-    error = "Loading...";
+    error = "Error Loading Entry - Refresh";
   }
 
   if (error) {
-    return <div className="animate-pulse">{error}</div>;
+    return <div className="text-red-600">{error}</div>;
   }
-  console.log(entry.userResponse);
+  console.log(entry.journalEntry);
 
   return (
     <div>
@@ -66,7 +66,7 @@ function JournalEntry({ entry }: any) {
       <div>
         <h2 className="mt-6 text-3xl font-bold">Journal</h2>
         <p className="mt-5 text-lg">
-          {entryObject.journal || <em>No Journal Entry</em>}
+          {entryObject.journalEntry || <em>No Journal Entry</em>}
         </p>
       </div>
       <Separator className="mt-5" />
