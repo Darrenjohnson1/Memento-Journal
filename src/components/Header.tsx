@@ -13,7 +13,7 @@ async function Header() {
     <header className="bg-popover relative flex h-24 w-full items-center justify-between border-b-1 px-3 sm:px-8">
       <Link href="/" className="flex items-end gap-2">
         <Image
-          src="/brainstorm.png"
+          src="/box.png"
           height={60}
           width={60}
           alt="logo"
@@ -21,7 +21,7 @@ async function Header() {
           priority
         />
         <h1 className="flex flex-col pb-1 text-2xl leading-6 font-bold">
-          JIBBER JOURNAL <span className="text-sm">AI MINDFULNESS JOURNAL</span>
+          Chatter Box <span className="text-sm">AI MINDFULNESS JOURNAL</span>
         </h1>
       </Link>
       <div className="flex gap-4">

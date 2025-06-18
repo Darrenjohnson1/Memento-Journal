@@ -8,19 +8,24 @@ import {
   SidebarHeader,
 } from "@/components/ui/sidebar";
 import prisma from "@/db/prisma";
-import { Entry } from "@prisma/client";
+import { Entry, User } from "@prisma/client";
 import Link from "next/link";
 import SideBarGroupContent from "./SideBarGroupContent";
 import AskAIButton from "./AskAIButton";
 import { Button } from "./ui/button";
 import LogOutButton from "./LogOutButton";
 import UserAccount from "./UserAccount";
+import DraftSideBarGroupContent from "./DraftSideBarGroupContent";
+import PartialSideBarGroupContent from "./PartialSideBarGroupContent";
 // import { Calendar } from "./ui/calendar";
 
 async function AppSideBar() {
   const user = await getUser();
 
   let entry: Entry[] = [];
+  let dbUser: User | null = null;
+  let hasDraftEntry;
+  let hasPartialEntry;
   try {
     if (user) {
       entry = await prisma.entry.findMany({
@@ -31,7 +36,25 @@ async function AppSideBar() {
           updatedAt: "desc",
         },
       });
+      dbUser = await prisma.user.findUnique({
+        where: { id: user.id },
+        select: {
+          id: true,
+          email: true,
+          preference: true,
+          createdAt: true,
+          updatedAt: true,
+          role: true,
+        },
+      });
     }
+    hasDraftEntry =
+      entry.find(
+        (entry) => entry.isOpen === "open" || entry.isOpen === "partial_open",
+      )?.isOpen || "";
+
+    hasPartialEntry =
+      entry.find((entry) => entry.isOpen === "partial")?.isOpen || "";
   } catch (error: any) {
     if (error.code === "P1001") {
       // P1001: Can't reach the database
@@ -41,12 +64,13 @@ async function AppSideBar() {
     // Re-throw or handle other errors
     throw error;
   }
+
   return (
     <Sidebar side="right" variant="floating">
       <SidebarHeader>
         {user ? (
           <div className="flex justify-between">
-            <UserAccount user={user} />
+            <UserAccount user={dbUser} />
             <LogOutButton />
           </div>
         ) : (
@@ -63,14 +87,23 @@ async function AppSideBar() {
         )}
       </SidebarHeader>
       <SidebarContent>
-        <SidebarGroup>
-          <SidebarGroupLabel>Incomplete Entry</SidebarGroupLabel>
-          {user && <SideBarGroupContent entry={entry} />}
-        </SidebarGroup>
-        <SidebarGroup>
-          <SidebarGroupLabel>Come Back Later</SidebarGroupLabel>
-          {user && <SideBarGroupContent entry={entry} />}
-        </SidebarGroup>
+        {hasDraftEntry ? (
+          <SidebarGroup>
+            <SidebarGroupLabel>Drafts</SidebarGroupLabel>
+            {user && <DraftSideBarGroupContent entry={entry} />}
+          </SidebarGroup>
+        ) : (
+          <></>
+        )}
+        {hasPartialEntry ? (
+          <SidebarGroup>
+            <SidebarGroupLabel>In Progress</SidebarGroupLabel>
+            {user && <PartialSideBarGroupContent entry={entry} />}
+          </SidebarGroup>
+        ) : (
+          <></>
+        )}
+
         <SidebarGroup>
           {/* <Calendar /> */}
           <SidebarGroupLabel>

@@ -66,14 +66,14 @@ function JournalEntry({ entry }: any) {
       <div>
         <h2 className="mt-6 text-3xl font-bold">Journal</h2>
         <p className="mt-5 text-lg">
-          {entryObject.journalEntry || <em>No Journal Entry</em>}
+          {entry.journalEntry?.[0]?.text ?? <em>No Journal Entry</em>}
         </p>
       </div>
       <Separator className="mt-5" />
       <h2 className="mt-6 mb-5 text-3xl font-bold">Insights</h2>
       {Object.entries(entry.userResponse).map(([question, answer], index) => (
-        <div className="flex flex-col">
-          <p key={index} className="question">
+        <div key={index} className="flex flex-col">
+          <p className="question">
             <strong>{question}</strong>:
           </p>
           <p className="response">{answer || <em>No response</em>}</p>

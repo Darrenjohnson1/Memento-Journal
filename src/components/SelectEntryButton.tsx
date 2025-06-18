@@ -55,7 +55,7 @@ function SelectEntryButton({ entry }: Props) {
   return (
     <SidebarMenuButton
       asChild
-      className={`items-start gap-0 pr-12 ${entry.id === entryId ? "bg-sidebar-accent/50" : ""}`}
+      className={`items-start gap-0 pr-12 ${entry.isOpen === "open" || entry.isOpen === "partial_open" || entry.isOpen === "partial" ? "bg-sidebar-accent/100" : ""} `}
     >
       <Link
         href={
