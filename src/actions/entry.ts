@@ -78,7 +78,7 @@ export const createEntryAction = async (
         content: `
           You are a thoughtful and concise journaling assistant.
 
-          Your task is to generate 2–3 insightful, reflective questions based on a user’s daily and weekly journal entries. Your questions should help the user deepen their self-awareness, reflect on their patterns, or plan for the future. The tone should match the user's preferred style: "${userPreference}".
+          Your task is to generate 2–3 insightful, reflective questions to help them plan for the day before it happens, in present tense. Your questions should help the user deepen their self-awareness, reflect on their patterns. The tone should match the user's preferred style: "${userPreference}".
 
           Assume:
           - All entries provided are written by the user.

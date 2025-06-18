@@ -22,7 +22,7 @@ export function NewDayCarousel({ entry }: any) {
   if (!entry || !entry.userResponse) {
     return (
       <div className="p-4 text-center text-red-500">
-        <p>Entry not found or not generated.</p>
+        <p>Entry not found or not generated. Refresh to try again.</p>
       </div>
     );
   }
@@ -72,17 +72,17 @@ export function NewDayCarousel({ entry }: any) {
   const handleSubmit = () => {
     if (!questionText.trim()) return;
 
-    setAnswers((prev) => {
-      const updated = [...prev];
-      updated[currentIndex] = questionText;
-      return updated;
-    });
+    // Create updated answers array with the current questionText
+    const updatedAnswers = [...answers];
+    updatedAnswers[currentIndex] = questionText;
+    setAnswers(updatedAnswers); // still set state as well
 
     if (currentIndex < questions.length - 1) {
       setCurrentIndex((prev) => prev + 1);
+      carouselApi?.scrollNext();
     } else {
       const questionsWithAnswers = Object.fromEntries(
-        questions.map((q, index) => [q.question, answers[index]]),
+        questions.map((q, index) => [q.question, updatedAnswers[index]]),
       );
 
       AISummaryAction(questionsWithAnswers).then((summary) => {
@@ -99,8 +99,6 @@ export function NewDayCarousel({ entry }: any) {
         router.push(`journal/?entryId=${entryIdParam}`);
       });
     }
-
-    carouselApi?.scrollNext();
   };
 
   const handleKeyDown = (e: React.KeyboardEvent<HTMLTextAreaElement>) => {
@@ -111,7 +109,7 @@ export function NewDayCarousel({ entry }: any) {
   };
 
   return (
-    <div>
+    <div className="w-80">
       <Carousel
         opts={{ watchDrag: false }}
         setApi={setCarouselApi}
@@ -149,9 +147,8 @@ export function NewDayCarousel({ entry }: any) {
           value={questionText}
           onChange={(e) => setQuestionText(e.target.value)}
           onKeyDown={handleKeyDown}
-          className="placeholder:text-muted-foreground resize-none rounded-none border-none bg-transparent p-0 shadow-none focus-visible:ring-0 focus-visible:ring-offset-0"
-          style={{ minHeight: "0", lineHeight: "normal" }}
-          rows={1}
+          className="placeholder:text-muted-foreground w-full resize-none rounded-none border-none bg-transparent p-0 shadow-none focus-visible:ring-0 focus-visible:ring-offset-0"
+          style={{ minHeight: "3rem", lineHeight: "normal" }}
         />
         <Button className="ml-auto size-8 rounded-full" onClick={handleSubmit}>
           <ArrowUpIcon className="text-background" />

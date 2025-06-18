@@ -38,10 +38,10 @@ function PartialSideBarGroupContent({ entry }: Props) {
         {filteredEntry.map((entry) => (
           <SidebarMenuItem key={entry.id} className="group/item">
             <SelectEntryButton entry={entry} />
-            {/* <DeleteEntryButton
+            <DeleteEntryButton
               entryId={entry.id}
               deleteEntryLocally={deleteEntryLocally}
-            /> */}
+            />
           </SidebarMenuItem>
         ))}
       </SidebarMenu>

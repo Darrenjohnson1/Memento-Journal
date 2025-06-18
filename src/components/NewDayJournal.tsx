@@ -21,8 +21,15 @@ function hasEntryToday(entry: Entry | null) {
   if (!entry) return false;
   const updated = new Date(entry.updatedAt);
   const now = new Date();
-  const start = new Date(now).setHours(7, 0, 0, 0);
-  const end = new Date(now).setHours(17, 0, 0, 0);
+
+  // Start of today at 7 AM
+  const start = new Date(now);
+  start.setHours(7, 0, 0, 0);
+
+  // End of today at 5 PM
+  const end = new Date(now);
+  end.setHours(17, 0, 0, 0);
+
   return updated >= start && updated <= end;
 }
 
@@ -46,13 +53,15 @@ function NewDayJournal({ user, entry }: Props) {
   const router = useRouter();
 
   const entryExists = hasEntryToday(entry);
-  console.log(entryExists);
+  console.log("entryExists:", entryExists);
+  console.log("entry.isOpen:", entry?.isOpen);
 
   useEffect(() => {
     const interval = setInterval(() => {
       const now = new Date();
       const fivePm = new Date();
       fivePm.setHours(17, 0, 0, 0);
+
       if (now >= fivePm) {
         setTimeLeft("Let's Wrap Up");
         clearInterval(interval);
@@ -64,6 +73,7 @@ function NewDayJournal({ user, entry }: Props) {
         setTimeLeft(`${h}h ${m}m ${s}s`);
       }
     }, 1000);
+
     return () => clearInterval(interval);
   }, []);
 
@@ -82,19 +92,38 @@ function NewDayJournal({ user, entry }: Props) {
   if (loading) return <LoadingState />;
 
   if (entryExists) {
-    if (entry?.isOpen === "open" || entry?.isOpen === "partial_open") {
-      return <IncompleteEntry entryId={entry.id} />;
-    } else if (entry?.isOpen === "partial") {
-      return (
-        <PartialEntry
-          onSubmit={handleNewEntry}
-          questionText={questionText}
-          setQuestionText={setQuestionText}
-          textareaRef={textareaRef}
-        />
-      );
-    } else {
-      return <CompleteEntry timeLeft={timeLeft} />;
+    const now = new Date();
+    const isAfterFive = now.getHours() >= 17;
+
+    switch (entry?.isOpen) {
+      case "open":
+        return isAfterFive ? (
+          <CompleteEntry timeLeft={timeLeft} />
+        ) : (
+          <IncompleteEntry entryId={entry.id} />
+        );
+      case "partial":
+        return isAfterFive ? (
+          <PartialEntry
+            onSubmit={handleNewEntry}
+            questionText={questionText}
+            setQuestionText={setQuestionText}
+            textareaRef={textareaRef}
+          />
+        ) : (
+          <CompleteEntry timeLeft={timeLeft} />
+        );
+      default:
+        return isAfterFive ? (
+          <></>
+        ) : (
+          <PartialEntry
+            onSubmit={handleNewEntry}
+            questionText={questionText}
+            setQuestionText={setQuestionText}
+            textareaRef={textareaRef}
+          />
+        );
     }
   }
 
