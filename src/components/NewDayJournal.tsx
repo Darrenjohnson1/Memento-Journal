@@ -5,7 +5,7 @@ import { Button } from "./ui/button";
 import { ArrowUpIcon, Loader2 } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { Entry, User } from "@prisma/client";
-import { createEntryAction } from "@/actions/entry";
+import { createEntryAction, followUpEntryAction } from "@/actions/entry";
 import { toast } from "sonner";
 import { v4 as uuidv4 } from "uuid";
 import { Skeleton } from "./ui/skeleton";
@@ -77,6 +77,7 @@ function NewDayJournal({ user, entry }: Props) {
     return () => clearInterval(interval);
   }, []);
 
+
   const handleNewEntry = async () => {
     if (!user) return router.push("/login");
     if (entryExists) return;
@@ -87,6 +88,16 @@ function NewDayJournal({ user, entry }: Props) {
     });
     await createEntryAction(uuid, questionText);
     router.push(`plan/?entryId=${uuid}`);
+  };
+
+  const handleUpdateEntry = async () => {
+    if (!user) return router.push("/login");
+    setLoading(true);
+    toast.success("Let's wrap up the day!", {
+      description: "Updating today's journal entry",
+    });
+    // await followUpEntryAction(uuid, questionText);
+    // router.push(`plan/?entryId=${uuid}`);
   };
 
   if (loading) return <LoadingState />;
@@ -105,7 +116,7 @@ function NewDayJournal({ user, entry }: Props) {
       case "partial":
         return isAfterFive ? (
           <PartialEntry
-            onSubmit={handleNewEntry}
+            onSubmit={handleUpdateEntry}
             questionText={questionText}
             setQuestionText={setQuestionText}
             textareaRef={textareaRef}

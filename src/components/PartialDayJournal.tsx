@@ -95,6 +95,17 @@ function PartialDayJournal({ user, entry }: Props) {
     router.push(`plan/?entryId=${uuid}`);
   };
 
+  const handleUpdateEntry = async () => {
+      if (!user) return router.push("/login");
+      setLoading(true);
+      const uuid = uuidv4();
+      toast.success("Let's wrap up the day!", {
+        description: "Updating today's journal entry",
+      });
+      await createEntryAction(uuid, questionText);
+      router.push(`plan/?entryId=${uuid}`);
+    };
+
   if (loading) return <LoadingState />;
 
   // Entry exists today
@@ -103,15 +114,10 @@ function PartialDayJournal({ user, entry }: Props) {
     return <CompleteEntry timeLeft={timeLeft} />;
   }
 
-  // After 5 PM on entry day → show partial entry to continue journaling
-  if (entry?.isOpen === "open" || entry?.isOpen === "partial_open") {
-    return <IncompleteEntry entryId={entry.id} />;
-  }
-
   if (entry?.isOpen === "partial") {
     return (
       <PartialEntry
-        onSubmit={handleNewEntry}
+        onSubmit={handleUpdateEntry}
         questionText={questionText}
         setQuestionText={setQuestionText}
         textareaRef={textareaRef}

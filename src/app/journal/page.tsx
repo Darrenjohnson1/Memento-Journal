@@ -39,20 +39,20 @@ async function page({ searchParams }: Props) {
             day: "numeric",
           })}
         </h1>
-        <FollowUpButton />
+        {/* <FollowUpButton /> */}
       </div>
       <div className="flex w-full max-w-4xl flex-col justify-center gap-2">
         <JournalEntry entry={entry} />
       </div>
       {entry.append ? (
         <div className="bg-popover relative flex h-24 w-full max-w-4xl flex-col items-center justify-center border-b-1">
-          <FollowUpButton />
+          {/* <FollowUpButton /> */}
         </div>
       ) : (
         <div className="bg-popover relative flex h-24 w-full max-w-4xl flex-col items-center justify-center gap-5 border-b-1">
           <p className="mt-5 text-lg"></p>
           {entry.append}
-          <FollowUpButton />
+          {/* <FollowUpButton /> */}
         </div>
       )}
     </div>

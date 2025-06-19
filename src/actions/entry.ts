@@ -18,15 +18,6 @@ export const createEntryAction = async (
     const oneWeekAgo = new Date();
     oneWeekAgo.setDate(oneWeekAgo.getDate() - 7);
 
-    // const userPreference = await prisma.user.findUnique({
-    //   where: {
-    //     id: user.id,
-    //   },
-    //   select: {
-    //     preference: true,
-    //   },
-    // });
-
     let dbUser = await prisma.user.findUnique({
       where: { id: user.id },
       select: {
@@ -52,24 +43,27 @@ export const createEntryAction = async (
         createdAt: "desc",
       },
       select: {
+        journalEntry: true,
         userResponse: true,
         createdAt: true,
         updatedAt: true,
         summary: true,
       },
     });
+
     let formattedEntry = "";
     if (entry.length > 0) {
-      let formattedEntry = entry
+      formattedEntry = entry
         .map((entry) =>
           `
-        Text: ${JSON.stringify(entry.userResponse)}
+        Text: ${JSON.stringify(entry.journalEntry)}
+        QuestionResponses: ${JSON.stringify(entry.userResponse)}
         Created at: ${entry.createdAt}
         Last updated: ${entry.updatedAt}
         Previous AI Summary: ${entry.summary}
-      `.trim(),
+            `.trim(),
         )
-        .join("\n");
+        .join("\n\n"); // Added an extra newline for readability
     }
 
     const messages = [
@@ -121,12 +115,10 @@ export const createEntryAction = async (
       max_tokens: 1024,
       temperature: 0.1,
     });
-    // console.log(out.choices[0].message.content);
-    // return out.choices[0].message.content || "A problem has occured...";
+
     const rawSummary =
       out.choices?.[0]?.message?.content || "Error summarizing entry.";
 
-    // Remove any <think>...</think> block (including multi-line content)
     const cleanSummary = rawSummary
       .replace(/<think>[\s\S]*?<\/think>/gi, "")
       .trim();
@@ -195,6 +187,227 @@ export const updateEntryAction = async (
     return { errorMessage: null };
   } catch (error) {
     return handleError(error);
+  }
+};
+
+export const followUpEntryAction = async (
+  entryId: string,
+  journalText: string,
+) => {
+  try {
+    const user = await getUser();
+    if (!user) throw new Error("You must be logged in to add a note");
+
+    const oneWeekAgo = new Date();
+    oneWeekAgo.setDate(oneWeekAgo.getDate() - 7);
+
+    const dbUser = await prisma.user.findUnique({
+      where: { id: user.id },
+      select: {
+        preference: true,
+      },
+    });
+
+    const userPreference = dbUser?.preference;
+
+    const now = new Date();
+    const startOfLogicalDay = new Date(now);
+    startOfLogicalDay.setHours(5, 0, 0, 0);
+    if (now < startOfLogicalDay) {
+      startOfLogicalDay.setDate(startOfLogicalDay.getDate() - 1);
+    }
+
+    const existingEntry = await prisma.entry.findUnique({
+      where: { id: entryId },
+    });
+
+    if (!existingEntry) {
+      throw new Error("Entry not found for follow-up.");
+    }
+
+    const todayEntry = await prisma.entry.findFirst({
+      where: {
+        authorId: user.id,
+        createdAt: {
+          gte: startOfLogicalDay,
+        },
+      },
+      orderBy: {
+        createdAt: "desc",
+      },
+      select: {
+        journalEntry: true,
+        userResponse: true,
+        createdAt: true,
+        updatedAt: true,
+        summary: true,
+      },
+    });
+
+    let todaysFormattedEntry = todayEntry
+      ? `
+        Text: ${JSON.stringify(todayEntry.journalEntry)}
+        QuestionResponses: ${JSON.stringify(todayEntry.userResponse)}
+        Created at: ${todayEntry.createdAt}
+        Last updated: ${todayEntry.updatedAt}
+        Previous AI Summary: ${todayEntry.summary}
+      `.trim()
+      : "";
+
+    const pastEntries = await prisma.entry.findMany({
+      where: {
+        authorId: user.id,
+        createdAt: {
+          gte: oneWeekAgo,
+        },
+      },
+      orderBy: { createdAt: "desc" },
+      select: {
+        journalEntry: true,
+        userResponse: true,
+        createdAt: true,
+        updatedAt: true,
+        summary: true,
+      },
+    });
+
+    const formattedEntry = pastEntries
+      .map((entry) =>
+        `
+        Text: ${JSON.stringify(entry.journalEntry)}
+        QuestionResponses: ${JSON.stringify(entry.userResponse)}
+        Created at: ${entry.createdAt}
+        Last updated: ${entry.updatedAt}
+        Previous AI Summary: ${entry.summary}
+        `.trim(),
+      )
+      .join("\n\n");
+
+    const messages = [
+      {
+        role: "system",
+        content: `
+          You are a thoughtful and concise journaling assistant.
+
+          Your task is to generate 2–3 insightful, reflective questions to follow up on the day, in past tense. Your questions should help the user deepen their self-awareness, reflect on their patterns. The tone should match the user's preferred style: "${userPreference}".
+
+          Assume:
+          - All entries provided are written by the user.
+          - You have access to 7 days of journal context.
+          - Your questions should vary in structure and format to stay engaging.
+
+          Use the following input types for variety:
+          1. Open-Ended Paragraph
+          2. Close-Ended Sentence
+          3. Likert Rating Scale
+
+          Respond with valid JSON:
+          [
+            { "question": "Your question here", "inputType": 1 },
+            ...
+          ]
+
+          —
+
+          **Today's Earlier Planning Journal:**
+          ${todaysFormattedEntry}
+
+          **Today’s Journal Follow Up:**
+          ${journalText}
+
+          **Entries from the Past 7 Days:**
+          ${formattedEntry}
+        `,
+      },
+    ];
+
+    const out = await HfInference.chatCompletion({
+      model: "Qwen/Qwen3-32B",
+      provider: "cerebras",
+      messages,
+      max_tokens: 1024,
+      temperature: 0.1,
+    });
+
+    const rawSummary = out.choices?.[0]?.message?.content || "[]";
+
+    const cleanSummary = rawSummary
+      .replace(/<think>[\s\S]*?<\/think>/gi, "")
+      .trim();
+
+    const parsedFollowUpQuestions: Record<string, string>[] =
+      JSON.parse(cleanSummary);
+
+    // Merge new questions with existing userResponse
+    const existingUserResponse = existingEntry.userResponse || {};
+    const combinedUserResponse = {
+      ...existingUserResponse,
+      [`followUp_${new Date().toISOString()}`]: parsedFollowUpQuestions,
+    };
+
+    const updatedJournalEntry = [
+      ...(existingEntry.journalEntry || []),
+      {
+        timestamp: new Date().toISOString(),
+        text: journalText,
+      },
+    ];
+
+    const updated = await prisma.entry.update({
+      where: { id: entryId },
+      data: {
+        journalEntry: updatedJournalEntry,
+        userResponse: combinedUserResponse,
+        isOpen: "partial",
+      },
+    });
+
+    return { success: true, data: updated };
+  } catch (error) {
+    console.error("Follow-up error:", error);
+    return {
+      success: false,
+      message: error instanceof Error ? error.message : "Unknown error",
+    };
+  }
+};
+
+export const updateFollowUpEntryAction = async (
+  entryId: string,
+  newUserResponse: Record<string, string>,
+  summary: string,
+) => {
+  try {
+    const user = await getUser();
+    if (!user) throw new Error("You must be logged in to update a note");
+
+    const existingEntry = await prisma.entry.findUnique({
+      where: { id: entryId },
+    });
+
+    if (!existingEntry) throw new Error("Entry not found");
+
+    const existingResponses = existingEntry.userResponse || {};
+    const combinedResponses = {
+      ...existingResponses,
+      [`manualUpdate_${new Date().toISOString()}`]: newUserResponse,
+    };
+
+    const updated = await prisma.entry.update({
+      where: { id: entryId },
+      data: {
+        userResponse: combinedResponses,
+        summary,
+        isOpen: "partial",
+      },
+    });
+
+    return { success: true, data: updated };
+  } catch (error) {
+    return {
+      success: false,
+      message: error instanceof Error ? error.message : "Unknown error",
+    };
   }
 };
 
@@ -347,71 +560,6 @@ export const AISummaryAction = async (entry: EntryObject) => {
             }
 
             If the responses don't make sense return something about trying to set yourself up for success instead of just entering random answers.
-          `,
-        },
-        ...messages,
-      ],
-      max_tokens: 512,
-      temperature: 0.1,
-    });
-    const rawSummary =
-      out.choices?.[0]?.message?.content || "Error summarizing entry.";
-
-    // Remove any <think>...</think> block (including multi-line content)
-    const cleanSummary = rawSummary
-      .replace(/<think>[\s\S]*?<\/think>/gi, "")
-      .trim();
-    console.log(cleanSummary);
-    return cleanSummary;
-  } catch (error) {
-    return handleError(error);
-  }
-};
-
-// export const getUserQuestionsAction = async () => {
-//   try {
-//     const user = await getUser();
-//     if (!user) throw new Error("You must be logged in to get AI responses");
-
-//     return { errorMessage: null };
-//   } catch (error) {
-//     return handleError(error);
-//   }
-// };
-
-export const followUpEntryAction = async (entry: String) => {
-  try {
-    const messages = [];
-
-    const keys = Object.keys(entry);
-    for (let i = 0; i < keys.length; i++) {
-      const question = keys[i];
-      const answer = entry[question];
-      if (answer) {
-        messages.push({ role: "user", content: question });
-        messages.push({ role: "assistant", content: answer });
-      }
-    }
-
-    const out = await HfInference.chatCompletion({
-      model: "Qwen/Qwen3-32B",
-      provider: "cerebras",
-      messages: [
-        {
-          role: "system",
-          content: `
-            You are a helpful assistant that summarizes a user's journal entry. 
-            Assume all responses to questions are related to the user's experiences. 
-            Keep answers succinct and return a paragraph summary in second person, present tense looking to the future.
-
-            Return all information in the format of valid JSON. All summaries should have a title a summarization, and 3 relevant tags. It should in the format below:
-            
-            {
-              "title": "Enter a Passage Title Here",
-              "summary": "Enter your Summary Here",
-              "tags": ["tag1", "tag2", "tag3"],
-              "sentiment": 0.0
-            }
           `,
         },
         ...messages,
