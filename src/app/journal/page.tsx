@@ -31,8 +31,8 @@ async function page({ searchParams }: Props) {
 
   return (
     <div className="flex h-full flex-col items-center gap-4">
-      <div className="bg-popover relative flex h-24 w-full max-w-4xl items-center justify-between border-b-1">
-        <h1 className="mt-10 text-3xl font-medium">
+      <div className="bg-popover relative flex w-full max-w-4xl items-center justify-between border-b-1 pb-6">
+        <h1 className="text-3xl font-medium">
           {entry?.createdAt.toLocaleString("en-US", {
             year: "numeric",
             month: "long",

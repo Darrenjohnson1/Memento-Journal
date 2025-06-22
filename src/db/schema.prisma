@@ -27,7 +27,9 @@ model User {
 model Entry {
   id           String      @id @default(uuid())
   journalEntry Json
+  journalEntry2 Json?
   userResponse Json
+  userResponse2 Json?
   summary      String
   isOpen       EntryStatus
   author       User        @relation(fields: [authorId], references: [id])

@@ -15,12 +15,17 @@ import { Textarea } from "./ui/textarea";
 import { Button } from "./ui/button";
 import { ArrowUpIcon } from "lucide-react";
 import useEntry from "@/hooks/useEntry";
-import { AISummaryAction, updateEntryAction } from "@/actions/entry";
+import {
+  AISummaryAction,
+  updateEntryAction,
+  updateFollowUpEntryAction,
+} from "@/actions/entry";
 import { useRouter, useSearchParams } from "next/navigation";
 import JournalEntry from "./JournalEntry";
 
-export function NewDayCarousel({ entry }: any) {
-  if (!entry || !entry.userResponse) {
+export function PartialDayCarousel({ entry }: any) {
+  if (!entry || !entry.userResponse2) {
+    console.log(entry);
     return (
       <div className="p-4 text-center text-red-500">
         <p>Entry not found or not generated. Refresh to try again.</p>
@@ -32,7 +37,7 @@ export function NewDayCarousel({ entry }: any) {
 
   // Parse structured question data from entry
   const questions: { question: string; inputType: number }[] = JSON.parse(
-    entry.userResponse,
+    entry.userResponse2,
   );
 
   const [answers, setAnswers] = useState<string[]>(
@@ -89,9 +94,13 @@ export function NewDayCarousel({ entry }: any) {
       AISummaryAction(questionsWithAnswers, entry.journalEntry).then(
         (summary) => {
           if (typeof summary === "string") {
-            updateEntryAction(entryIdParam, questionsWithAnswers, summary);
+            updateFollowUpEntryAction(
+              entryIdParam,
+              questionsWithAnswers,
+              summary,
+            );
           } else {
-            updateEntryAction(
+            updateFollowUpEntryAction(
               entryIdParam,
               questionsWithAnswers,
               "Error summarizing entry.",
@@ -133,12 +142,8 @@ export function NewDayCarousel({ entry }: any) {
             </CarouselItem>
           ))}
         </CarouselContent>
-
-        {/* Move buttons below */}
-        <div className="mt-4 flex justify-center gap-4">
-          <Button onClick={handlePrevious} />
-          <Button onClick={handleNext} />
-        </div>
+        <CarouselPrevious onClick={handlePrevious} />
+        <CarouselNext onClick={handleNext} />
       </Carousel>
 
       <Progress value={progress} className="mt-10" />
@@ -164,4 +169,4 @@ export function NewDayCarousel({ entry }: any) {
   );
 }
 
-export default NewDayCarousel;
+export default PartialDayCarousel;

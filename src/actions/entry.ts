@@ -191,8 +191,8 @@ export const updateEntryAction = async (
 };
 
 export const followUpEntryAction = async (
-  entryId: string,
   journalText: string,
+  entryId: string,
 ) => {
   try {
     const user = await getUser();
@@ -217,40 +217,36 @@ export const followUpEntryAction = async (
       startOfLogicalDay.setDate(startOfLogicalDay.getDate() - 1);
     }
 
-    const existingEntry = await prisma.entry.findUnique({
+    let existingEntry = await prisma.entry.findUnique({
       where: { id: entryId },
     });
 
-    if (!existingEntry) {
-      throw new Error("Entry not found for follow-up.");
-    }
+    // const todayEntry = await prisma.entry.findFirst({
+    //   where: {
+    //     authorId: user.id,
+    //     createdAt: {
+    //       gte: startOfLogicalDay,
+    //     },
+    //   },
+    //   orderBy: {
+    //     createdAt: "desc",
+    //   },
+    //   select: {
+    //     journalEntry: true,
+    //     userResponse: true,
+    //     createdAt: true,
+    //     updatedAt: true,
+    //     summary: true,
+    //   },
+    // });
 
-    const todayEntry = await prisma.entry.findFirst({
-      where: {
-        authorId: user.id,
-        createdAt: {
-          gte: startOfLogicalDay,
-        },
-      },
-      orderBy: {
-        createdAt: "desc",
-      },
-      select: {
-        journalEntry: true,
-        userResponse: true,
-        createdAt: true,
-        updatedAt: true,
-        summary: true,
-      },
-    });
-
-    let todaysFormattedEntry = todayEntry
+    let todaysFormattedEntry = existingEntry
       ? `
-        Text: ${JSON.stringify(todayEntry.journalEntry)}
-        QuestionResponses: ${JSON.stringify(todayEntry.userResponse)}
-        Created at: ${todayEntry.createdAt}
-        Last updated: ${todayEntry.updatedAt}
-        Previous AI Summary: ${todayEntry.summary}
+        Previous Journal Entry: ${JSON.stringify(existingEntry.journalEntry)}
+        QuestionResponses: ${JSON.stringify(existingEntry.userResponse)}
+        Created at: ${existingEntry.createdAt}
+        Last updated: ${existingEntry.updatedAt}
+        Previous AI Summary: ${existingEntry.summary}
       `.trim()
       : "";
 
@@ -272,13 +268,21 @@ export const followUpEntryAction = async (
     });
 
     const formattedEntry = pastEntries
+      // .map((entry) =>
+      //   `
+      //   Text: ${JSON.stringify(entry.journalEntry)}
+      //   QuestionResponses: ${JSON.stringify(entry.userResponse)}
+      //   Created at: ${entry.createdAt}
+      //   Last updated: ${entry.updatedAt}
+      //   Previous AI Summary: ${entry.summary}
+      //   `.trim(),
+      // )
+      // .join("\n\n");
       .map((entry) =>
         `
-        Text: ${JSON.stringify(entry.journalEntry)}
-        QuestionResponses: ${JSON.stringify(entry.userResponse)}
         Created at: ${entry.createdAt}
-        Last updated: ${entry.updatedAt}
-        Previous AI Summary: ${entry.summary}
+        Journal: ${JSON.stringify(entry.journalEntry)}
+        AI Summary: ${entry.summary}
         `.trim(),
       )
       .join("\n\n");
@@ -303,7 +307,10 @@ export const followUpEntryAction = async (
 
           Respond with valid JSON:
           [
-            { "question": "Your question here", "inputType": 1 },
+            {
+              "question": "Your question here",
+              "inputType": 1
+            },
             ...
           ]
 
@@ -330,39 +337,64 @@ export const followUpEntryAction = async (
     });
 
     const rawSummary = out.choices?.[0]?.message?.content || "[]";
-
+    console.log(messages);
+    console.log(rawSummary);
     const cleanSummary = rawSummary
       .replace(/<think>[\s\S]*?<\/think>/gi, "")
       .trim();
 
-    const parsedFollowUpQuestions: Record<string, string>[] =
-      JSON.parse(cleanSummary);
+    // const parsedFollowUpQuestions: Record<string, string>[] =
+    //   JSON.parse(cleanSummary);
 
     // Merge new questions with existing userResponse
-    const existingUserResponse = existingEntry.userResponse || {};
-    const combinedUserResponse = {
-      ...existingUserResponse,
-      [`followUp_${new Date().toISOString()}`]: parsedFollowUpQuestions,
-    };
+    // const existingUserResponse = existingEntry.userResponse || {};
+    // const combinedUserResponse = {
+    //   ...existingUserResponse,
+    //   [`followUp_${new Date().toISOString()}`]: parsedFollowUpQuestions,
+    // };
 
-    const updatedJournalEntry = [
-      ...(existingEntry.journalEntry || []),
-      {
-        timestamp: new Date().toISOString(),
-        text: journalText,
-      },
-    ];
-
-    const updated = await prisma.entry.update({
-      where: { id: entryId },
-      data: {
-        journalEntry: updatedJournalEntry,
-        userResponse: combinedUserResponse,
-        isOpen: "partial",
-      },
-    });
-
-    return { success: true, data: updated };
+    // const updatedJournalEntry = [
+    //   ...(existingEntry.journalEntry || []),
+    //   {
+    //     timestamp: new Date().toISOString(),
+    //     text: journalText,
+    //   },
+    // ];
+    if (!existingEntry) {
+      const updated = await prisma.entry.create({
+        data: {
+          id: entryId,
+          authorId: user.id,
+          userResponse: "",
+          userResponse2: cleanSummary,
+          summary: '{"title": "Started End of Day Draft"}',
+          isOpen: "partial_open",
+          journalEntry: [{}],
+          journalEntry2: [
+            {
+              timestamp: new Date().toISOString(),
+              text: journalText,
+            },
+          ],
+        },
+      });
+      return { success: true, data: updated };
+    } else {
+      const updated = await prisma.entry.update({
+        where: { id: entryId },
+        data: {
+          journalEntry2: [
+            {
+              timestamp: new Date().toISOString(),
+              text: journalText,
+            },
+          ],
+          userResponse2: cleanSummary,
+          isOpen: "partial_open",
+        },
+      });
+      return { success: true, data: updated };
+    }
   } catch (error) {
     console.error("Follow-up error:", error);
     return {
@@ -374,40 +406,21 @@ export const followUpEntryAction = async (
 
 export const updateFollowUpEntryAction = async (
   entryId: string,
-  newUserResponse: Record<string, string>,
+  userResponse2: Record<string, string>,
   summary: string,
 ) => {
   try {
     const user = await getUser();
     if (!user) throw new Error("You must be logged in to update a note");
 
-    const existingEntry = await prisma.entry.findUnique({
+    await prisma.entry.update({
       where: { id: entryId },
+      data: { userResponse2, summary, isOpen: "closed" },
     });
 
-    if (!existingEntry) throw new Error("Entry not found");
-
-    const existingResponses = existingEntry.userResponse || {};
-    const combinedResponses = {
-      ...existingResponses,
-      [`manualUpdate_${new Date().toISOString()}`]: newUserResponse,
-    };
-
-    const updated = await prisma.entry.update({
-      where: { id: entryId },
-      data: {
-        userResponse: combinedResponses,
-        summary,
-        isOpen: "partial",
-      },
-    });
-
-    return { success: true, data: updated };
+    return { errorMessage: null };
   } catch (error) {
-    return {
-      success: false,
-      message: error instanceof Error ? error.message : "Unknown error",
-    };
+    return handleError(error);
   }
 };
 
@@ -525,7 +538,7 @@ type EntryObject = {
   [key: string]: string | undefined;
 };
 
-export const AISummaryAction = async (entry: EntryObject) => {
+export const AISummaryAction = async (entry: EntryObject, journal: string) => {
   try {
     const messages = [];
 
@@ -560,6 +573,9 @@ export const AISummaryAction = async (entry: EntryObject) => {
             }
 
             If the responses don't make sense return something about trying to set yourself up for success instead of just entering random answers.
+
+            **Here is the journal entry from today**
+            ${journal}
           `,
         },
         ...messages,

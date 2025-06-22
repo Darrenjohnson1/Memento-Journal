@@ -12,7 +12,9 @@ type Props = {
     tags: string[];
     sentiment: number;
     journalEntry?: { text: string }[];
+    journalEntry2?: { text: string }[];
     userResponse?: Record<string, string>;
+    userResponse2?: Record<string, string>;
   } | null;
 };
 
@@ -61,24 +63,27 @@ function JournalEntry({ entry }: Props) {
           {parsedEntry.title ?? "Untitled"}
         </h2>
         <p className="mt-5 text-lg">{parsedEntry.summary ?? ""}</p>
-
-        <Badge
-          className="mt-5 mr-1"
-          style={{
-            backgroundColor:
-              sentiment < 0 ? "yellow" : sentiment > 0 ? "green" : "gray",
-            color: sentiment < 0 ? "black" : "white",
-          }}
-        >
-          {sentiment > 0
-            ? "Positive"
-            : sentiment < 0
-              ? "Challenging"
-              : "Neutral"}
-        </Badge>
+        {entry.journalEntry2 ? (
+          <Badge
+            className="mt-5 mr-1"
+            style={{
+              backgroundColor:
+                sentiment < 0 ? "yellow" : sentiment > 0 ? "green" : "gray",
+              color: sentiment < 0 ? "black" : "white",
+            }}
+          >
+            {sentiment > 0
+              ? "Positive"
+              : sentiment < 0
+                ? "Challenging"
+                : "Neutral"}
+          </Badge>
+        ) : (
+          <></>
+        )}
 
         {tags.map((tag: string, index: number) => (
-          <Badge key={index} className="mr-1">
+          <Badge key={index} className="mt-5 mr-1">
             {tag.charAt(0).toUpperCase() + tag.slice(1)}
           </Badge>
         ))}
@@ -91,12 +96,29 @@ function JournalEntry({ entry }: Props) {
         <p className="mt-5 text-lg">
           {entry.journalEntry?.[0]?.text ?? <em>No Journal Entry</em>}
         </p>
+        <p className="mt-5 text-lg">
+          {entry.journalEntry2?.[0]?.text ?? <em>No Journal Entry</em>}
+        </p>
       </div>
 
       <Separator className="mt-5" />
       <h2 className="mt-6 mb-5 text-3xl font-bold">Insights</h2>
       {entry.userResponse && Object.keys(entry.userResponse).length > 0 ? (
         Object.entries(entry.userResponse).map(([question, answer], index) => (
+          <div key={index} className="mb-4 flex flex-col">
+            <p className="question font-semibold">{question}</p>
+            <p className="response text-gray-700">
+              {answer || <em>No response</em>}
+            </p>
+          </div>
+        ))
+      ) : (
+        <p>
+          <em>No insights available.</em>
+        </p>
+      )}
+      {entry.userResponse2 && Object.keys(entry.userResponse2).length > 0 ? (
+        Object.entries(entry.userResponse2).map(([question, answer], index) => (
           <div key={index} className="mb-4 flex flex-col">
             <p className="question font-semibold">{question}</p>
             <p className="response text-gray-700">

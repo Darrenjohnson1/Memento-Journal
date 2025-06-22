@@ -28,7 +28,7 @@ function hasEntryToday(entry: Entry | null) {
 
   // End of today at 5 PM
   const end = new Date(now);
-  end.setHours(17, 0, 0, 0);
+  end.setHours(24, 0, 0, 0);
 
   return updated >= start && updated <= end;
 }
@@ -77,7 +77,6 @@ function NewDayJournal({ user, entry }: Props) {
     return () => clearInterval(interval);
   }, []);
 
-
   const handleNewEntry = async () => {
     if (!user) return router.push("/login");
     if (entryExists) return;
@@ -90,24 +89,39 @@ function NewDayJournal({ user, entry }: Props) {
     router.push(`plan/?entryId=${uuid}`);
   };
 
-  const handleUpdateEntry = async () => {
+  const handleUpdateEntry = async (entry?: Entry) => {
     if (!user) return router.push("/login");
+    let journalID;
     setLoading(true);
+    if (!entry) {
+      journalID = uuidv4();
+    } else {
+      journalID = entry.id;
+    }
+    console.log(entry);
     toast.success("Let's wrap up the day!", {
       description: "Updating today's journal entry",
     });
-    // await followUpEntryAction(uuid, questionText);
-    // router.push(`plan/?entryId=${uuid}`);
+
+    await followUpEntryAction(questionText, journalID);
+
+    router.push(`/follow-up?entryId=${journalID}`);
   };
 
   if (loading) return <LoadingState />;
 
-  if (entryExists) {
-    const now = new Date();
-    const isAfterFive = now.getHours() >= 17;
+  const now = new Date();
+  const isAfterFive = now.getHours() >= 17;
 
+  if (entryExists) {
     switch (entry?.isOpen) {
       case "open":
+        return isAfterFive ? (
+          <CompleteEntry timeLeft={timeLeft} />
+        ) : (
+          <IncompleteEntry entryId={entry.id} />
+        );
+      case "partial_open":
         return isAfterFive ? (
           <CompleteEntry timeLeft={timeLeft} />
         ) : (
@@ -120,32 +134,43 @@ function NewDayJournal({ user, entry }: Props) {
             questionText={questionText}
             setQuestionText={setQuestionText}
             textareaRef={textareaRef}
+            entry={entry}
           />
         ) : (
           <CompleteEntry timeLeft={timeLeft} />
         );
-      default:
-        return isAfterFive ? (
-          <></>
-        ) : (
-          <PartialEntry
-            onSubmit={handleNewEntry}
-            questionText={questionText}
-            setQuestionText={setQuestionText}
-            textareaRef={textareaRef}
-          />
-        );
+      case "closed":
+        return <EndDay entryId={entry.id} />;
+      // default:
+      //   return isAfterFive ? (
+      //     <></>
+      //   ) : (
+      //     <PartialEntry
+      //       onSubmit={handleUpdateEntry}
+      //       questionText={questionText}
+      //       setQuestionText={setQuestionText}
+      //       textareaRef={textareaRef}
+      //       entry={entry}
+      //     />
+      //   );
     }
+  } else {
+    return isAfterFive ? (
+      <PartialEntry
+        onSubmit={handleUpdateEntry}
+        questionText={questionText}
+        setQuestionText={setQuestionText}
+        textareaRef={textareaRef}
+      />
+    ) : (
+      <PreStartEntry
+        onSubmit={handleNewEntry}
+        questionText={questionText}
+        setQuestionText={setQuestionText}
+        textareaRef={textareaRef}
+      />
+    );
   }
-
-  return (
-    <PreStartEntry
-      onSubmit={handleNewEntry}
-      questionText={questionText}
-      setQuestionText={setQuestionText}
-      textareaRef={textareaRef}
-    />
-  );
 }
 
 function IncompleteEntry({ entryId }: { entryId: string }) {
@@ -169,11 +194,13 @@ function PartialEntry({
   questionText,
   setQuestionText,
   textareaRef,
+  entry,
 }: {
-  onSubmit: () => void;
+  onSubmit: (entry?: Entry) => void;
   questionText: string;
   setQuestionText: (v: string) => void;
   textareaRef: React.RefObject<HTMLTextAreaElement>;
+  entry?: Entry;
 }) {
   return (
     <div className="flex h-full w-full max-w-4xl flex-col">
@@ -194,7 +221,7 @@ function PartialEntry({
         <Button
           type="button"
           className="ml-auto size-8 rounded-full"
-          onClick={onSubmit}
+          onClick={() => onSubmit(entry)}
         >
           <ArrowUpIcon className="text-background" />
         </Button>
@@ -213,7 +240,7 @@ function PreStartEntry({
   textareaRef,
 }: any) {
   return (
-    <div className="flex h-full w-full max-w-4xl flex-col">
+    <div className="flex w-full max-w-4xl flex-col">
       <h1 className="w-auto text-2xl font-bold">
         What does your day look like?
       </h1>
@@ -252,6 +279,22 @@ function CompleteEntry({ timeLeft }: { timeLeft: string }) {
         day.
       </h3>
       <h3 className="mt-3 animate-pulse">{timeLeft}</h3>
+    </div>
+  );
+}
+
+function EndDay({ entryId }: { entryId: string }) {
+  return (
+    <div className="align-center flex flex-col text-center">
+      <h2 className="text-3xl font-semibold">All Done For Today!</h2>
+      <h3 className="mt-3">
+        Let's talk in the morning and plan for the day! Until then review today.
+      </h3>
+      <Button asChild className="mt-10 w-20 self-center">
+        <Link href={`journal/?entryId=${entryId}`} className="hidden sm:block">
+          Review
+        </Link>
+      </Button>
     </div>
   );
 }

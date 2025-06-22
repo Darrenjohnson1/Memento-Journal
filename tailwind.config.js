@@ -10,3 +10,13 @@ module.exports = {
   },
   plugins: [],
 };
+
+module.exports = {
+  theme: {
+    extend: {
+      fontFamily: {
+        funnel: ["var(--font-funnel-display)", "sans-serif"],
+      },
+    },
+  },
+};

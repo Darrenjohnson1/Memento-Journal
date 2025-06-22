@@ -97,7 +97,7 @@ async function AppSideBar() {
         )}
         {hasPartialEntry ? (
           <SidebarGroup>
-            <SidebarGroupLabel>In Progress</SidebarGroupLabel>
+            <SidebarGroupLabel>Awaiting Response</SidebarGroupLabel>
             {user && <PartialSideBarGroupContent entry={entry} />}
           </SidebarGroup>
         ) : (
@@ -121,9 +121,9 @@ async function AppSideBar() {
           {user && <SideBarGroupContent entry={entry} />}
         </SidebarGroup>
       </SidebarContent>
-      <SidebarFooter>
-        <AskAIButton user={user} />
-      </SidebarFooter>
+      {/* <SidebarFooter>
+        
+      </SidebarFooter> */}
     </Sidebar>
   );
 }
