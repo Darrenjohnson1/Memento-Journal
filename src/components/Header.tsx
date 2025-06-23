@@ -7,6 +7,7 @@ import LogOutButton from "./LogOutButton";
 import { SidebarTrigger, useSidebar } from "./ui/sidebar";
 import { Funnel_Display } from "next/font/google";
 import SideBarTrigger from "./SideBarTrigger";
+import { ChevronRight } from "lucide-react";
 
 const funnelDisplay = Funnel_Display({
   subsets: ["latin"],
@@ -56,13 +57,15 @@ async function Header() {
           <SideBarTrigger />
         ) : (
           <>
-            {/* <Button asChild>
-              <Link href="/sign-up" className="hidden sm:block">
-                Sign Up
+            <Button asChild className="hidden md:block">
+              <Link href="/login">
+                Sign Up <ChevronRight />
               </Link>
-            </Button> */}
-            <Button asChild>
-              <Link href="/login">Sign In</Link>
+            </Button>
+            <Button variant="outline" asChild>
+              <Link href="/login">
+                Login <ChevronRight />
+              </Link>
             </Button>
           </>
         )}

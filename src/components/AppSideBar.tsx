@@ -22,32 +22,35 @@ import PartialSideBarGroupContent from "./PartialSideBarGroupContent";
 async function AppSideBar() {
   const user = await getUser();
 
+  if (!user) return null; // 👈 Add this line to hide sidebar for non-logged-in users
+
   let entry: Entry[] = [];
   let dbUser: User | null = null;
   let hasDraftEntry;
   let hasPartialEntry;
+
   try {
-    if (user) {
-      entry = await prisma.entry.findMany({
-        where: {
-          authorId: user.id,
-        },
-        orderBy: {
-          updatedAt: "desc",
-        },
-      });
-      dbUser = await prisma.user.findUnique({
-        where: { id: user.id },
-        select: {
-          id: true,
-          email: true,
-          preference: true,
-          createdAt: true,
-          updatedAt: true,
-          role: true,
-        },
-      });
-    }
+    entry = await prisma.entry.findMany({
+      where: {
+        authorId: user.id,
+      },
+      orderBy: {
+        updatedAt: "desc",
+      },
+    });
+
+    dbUser = await prisma.user.findUnique({
+      where: { id: user.id },
+      select: {
+        id: true,
+        email: true,
+        preference: true,
+        createdAt: true,
+        updatedAt: true,
+        role: true,
+      },
+    });
+
     hasDraftEntry =
       entry.find(
         (entry) => entry.isOpen === "open" || entry.isOpen === "partial_open",
@@ -57,75 +60,44 @@ async function AppSideBar() {
       entry.find((entry) => entry.isOpen === "partial")?.isOpen || "";
   } catch (error: any) {
     if (error.code === "P1001") {
-      // P1001: Can't reach the database
-      return console.log("Can't reach the database to authenticate user");
+      console.log("Can't reach the database to authenticate user");
+      return null;
     }
 
-    // Re-throw or handle other errors
     throw error;
   }
 
   return (
     <Sidebar side="right" variant="floating">
       <SidebarHeader>
-        {user ? (
-          <div className="flex justify-between">
-            <UserAccount user={dbUser} />
-            <LogOutButton />
-          </div>
-        ) : (
-          <>
-            <Button asChild>
-              <Link href="/sign-up" className="">
-                Sign Up
-              </Link>
-            </Button>
-            <Button asChild variant="outline">
-              <Link href="/login">Login</Link>
-            </Button>
-          </>
-        )}
+        <div className="flex justify-between">
+          <UserAccount user={dbUser} />
+          <LogOutButton />
+        </div>
       </SidebarHeader>
+
       <SidebarContent>
-        {hasDraftEntry ? (
+        {hasDraftEntry && (
           <SidebarGroup>
             <SidebarGroupLabel>Drafts</SidebarGroupLabel>
-            {user && <DraftSideBarGroupContent entry={entry} />}
+            <DraftSideBarGroupContent entry={entry} />
           </SidebarGroup>
-        ) : (
-          <></>
         )}
-        {hasPartialEntry ? (
+        {hasPartialEntry && (
           <SidebarGroup>
             <SidebarGroupLabel>Awaiting Response</SidebarGroupLabel>
-            {user && <PartialSideBarGroupContent entry={entry} />}
+            <PartialSideBarGroupContent entry={entry} />
           </SidebarGroup>
-        ) : (
-          <></>
         )}
 
         <SidebarGroup>
-          {/* <Calendar /> */}
-          <SidebarGroupLabel>
-            {user ? (
-              "Recent Journal Entries"
-            ) : (
-              <p>
-                No User Data:{" "}
-                <Link className="underline" href="/login">
-                  Login
-                </Link>
-              </p>
-            )}
-          </SidebarGroupLabel>
-          {user && <SideBarGroupContent entry={entry} />}
+          <SidebarGroupLabel>Recent Journal Entries</SidebarGroupLabel>
+          <SideBarGroupContent entry={entry} />
         </SidebarGroup>
       </SidebarContent>
-      {/* <SidebarFooter>
-        
-      </SidebarFooter> */}
     </Sidebar>
   );
 }
+
 
 export default AppSideBar;

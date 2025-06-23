@@ -1,33 +1,21 @@
 import { getUser } from "@/auth/server";
 import AskAIButton from "@/components/AskAIButton";
 import EntryTextInput from "@/components/EntryTextInput";
-import MockUps from "@/components/MockUps";
 import NewDayCarousel from "@/components/NewDayCarousel";
 import NewDayJournal from "@/components/NewDayJournal";
 import NewEntryButton from "@/components/NewEntryButton";
-import { Badge } from "@/components/ui/badge";
-import { Button } from "@/components/ui/button";
 import { Carousel } from "@/components/ui/carousel";
 import { Separator } from "@/components/ui/separator";
 import { WeeklySentiment } from "@/components/WeeklySentiment";
 import prisma from "@/db/prisma";
 import { Entry } from "@prisma/client";
-import { ArrowRight, ChevronRight } from "lucide-react";
-import { Funnel_Display } from "next/font/google";
-import Link from "next/link";
 import React from "react";
 
 type Props = {
   searchParams: Promise<{ [key: string]: string | string[] | undefined }>;
 };
 
-const funnelDisplay = Funnel_Display({
-  subsets: ["latin"],
-  weight: ["400", "500", "600", "700", "800"], // choose the weights you want
-  variable: "--font-funnel-display", // optional for Tailwind
-});
-
-async function HomePage({ searchParams }: Props) {
+async function Week({ searchParams }: Props) {
   const entryIdParam = (await searchParams).entryId;
   const user = await getUser();
 
@@ -81,31 +69,6 @@ async function HomePage({ searchParams }: Props) {
   console.log(entry);
   return (
     <div className="flex h-full flex-col items-center gap-4">
-      <div className="mt-6 text-center">
-        <Badge
-          variant="secondary"
-          className="mb-5 rounded-full border-1 border-gray-200 bg-white px-4 py-1.5 text-base font-medium"
-        >
-          🧠 AI Mindfulness Journal
-        </Badge>
-        <h1
-          className="text-5xl font-semibold"
-          style={{
-            fontFamily: '"Funnel Display", sans-serif',
-            fontWeight: 700,
-          }}
-        >
-          Turn Down the Chatter,<br></br> Tune Into What Matters.
-        </h1>
-        <h2 className="pt-3 pb-6 text-xl font-semibold">
-          The best insights come from within — we help you listen.
-        </h2>
-        <Button className="mt-6">
-          <Link href="/sign-up">Try Now</Link>
-          <ChevronRight />
-        </Button>
-      </div>
-      <MockUps />
       <NewDayJournal user={user} entry={entry} />
       <Separator className="mt-5" />
       <div className="w-ful mt-6 max-w-4xl">
@@ -129,4 +92,4 @@ async function HomePage({ searchParams }: Props) {
   );
 }
 
-export default HomePage;
+export default Week;
