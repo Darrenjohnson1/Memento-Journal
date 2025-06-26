@@ -95,10 +95,10 @@ export function JournalMock() {
   }, []);
 
   return (
-    <div className="flex w-full max-w-4xl flex-col">
-      <h2 className="w-auto text-2xl font-bold">
+    <div className="flex w-full flex-col">
+      {/* <h2 className="w-auto text-2xl font-bold">
         What does your day look like?
-      </h2>
+      </h2> */}
 
       <div
         className="mt-5 flex min-h-40 w-full cursor-text flex-col justify-between rounded-lg border p-4"

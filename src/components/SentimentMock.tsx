@@ -1,5 +1,13 @@
 "use client";
+import React from "react";
 import { TrendingUp } from "lucide-react";
+import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardHeader,
+  CardTitle,
+} from "@/components/ui/card";
 import {
   ChartConfig,
   ChartContainer,
@@ -15,9 +23,8 @@ import {
   Tooltip,
   TooltipProps,
 } from "recharts";
-import React from "react";
 
-// Dummy data generator
+// Dummy data: simulate 14 days
 const dummyEntries = Array.from({ length: 14 }).map((_, i) => {
   const date = new Date();
   date.setDate(date.getDate() - (13 - i));
@@ -31,7 +38,7 @@ const dummyEntries = Array.from({ length: 14 }).map((_, i) => {
   };
 });
 
-// Chart configuration
+// Chart config
 const chartConfig = {
   sentiment: {
     label: "Positivity Score",
@@ -39,7 +46,6 @@ const chartConfig = {
   },
 } satisfies ChartConfig;
 
-// Format the date to "Jun 21"
 function formatDate(dateString: string) {
   const date = new Date(dateString);
   return date.toLocaleDateString(undefined, {
@@ -96,7 +102,16 @@ function getISOWeek(date: Date) {
 }
 
 export function SentimentMock() {
-  const chartData = dummyEntries
+  const now = new Date();
+  const sevenDaysAgo = new Date();
+  sevenDaysAgo.setDate(now.getDate() - 6);
+
+  const pastWeekEntries = dummyEntries.filter((entry) => {
+    const date = new Date(entry.createdAt);
+    return date >= sevenDaysAgo && date <= now;
+  });
+
+  const chartData = pastWeekEntries
     .map(({ createdAt, summary }) => {
       try {
         const summaryObj = JSON.parse(summary);
@@ -122,73 +137,75 @@ export function SentimentMock() {
   const last = chartData[chartData.length - 1]?.sentiment ?? 0;
   const improvement = (last - first).toFixed(2);
 
-  const weeklyScores: Record<string, number> = {};
-  chartData.forEach((entry) => {
-    const week = getISOWeek(entry.date);
-    weeklyScores[week] = (weeklyScores[week] || 0) + entry.sentiment;
-  });
+  const currentWeek = getISOWeek(new Date());
+  const weeklyScore = chartData.reduce(
+    (sum, entry) => sum + entry.sentiment,
+    0,
+  );
 
   return (
-    <div className="w-full">
-      <div className="mb-4">
-        <h2 className="w-auto text-2xl font-bold">Positivity Score Over Time</h2>
-        <p className="text-muted-foreground text-sm">
-          Based on each individual journal entry
-        </p>
-      </div>
+    <Card className="mx-auto w-full max-w-xl">
+      <CardHeader className="text-center">
+        <CardTitle className="text-2xl">Your Mood at a Glance</CardTitle>
+        <CardDescription className="text-xl">
+          Visual insights from this past week’s journal entries.
+        </CardDescription>
+      </CardHeader>
 
-      <ChartContainer config={chartConfig}>
-        <AreaChart
-          data={chartData}
-          margin={{ top: 10, right: 20, left: 0, bottom: 60 }}
-        >
-          <CartesianGrid vertical={false} strokeDasharray="3 3" />
-          <XAxis
-            dataKey="day"
-            tickLine={false}
-            axisLine={false}
-            tickMargin={8}
-            interval={0}
-            angle={-45}
-            textAnchor="end"
-            height={50}
-          />
-          <YAxis
-            domain={[0, 10]}
-            tickCount={6}
-            tickLine={false}
-            axisLine={false}
-            tickFormatter={(val) => val.toFixed(1)}
-          />
-          <Tooltip content={<CustomTooltip />} />
-          <Area
-            dataKey="sentiment"
-            type="monotone"
-            stroke="#ff3e66"
-            fill="#ff3e66"
-            fillOpacity={0.2}
-            strokeWidth={2}
-            isAnimationActive={true}
-            connectNulls
-          />
-          <ChartLegend content={<ChartLegendContent />} />
-        </AreaChart>
-      </ChartContainer>
-
-      <div className="mt-6 space-y-2">
-        <div className="text-foreground flex items-center gap-2 text-sm font-medium">
-          <TrendingUp className="h-4 w-4 text-pink-500" />
-          Trending up by {improvement} positivity points over time
+      <CardContent className="flex h-full flex-col justify-end gap-4 overflow-hidden pt-0">
+        <div className="h-[220px] w-full">
+          <ChartContainer config={chartConfig} className="h-full w-full">
+            <AreaChart
+              data={chartData}
+              margin={{ top: 10, right: 20, left: 0, bottom: 60 }}
+            >
+              <CartesianGrid vertical={false} strokeDasharray="3 3" />
+              <XAxis
+                dataKey="day"
+                tickLine={false}
+                axisLine={false}
+                tickMargin={8}
+                interval={0}
+                angle={-45}
+                textAnchor="end"
+                height={50}
+              />
+              <YAxis
+                domain={[0, 10]}
+                tickCount={6}
+                tickLine={false}
+                axisLine={false}
+                tickFormatter={(val) => val.toFixed(1)}
+              />
+              <Tooltip content={<CustomTooltip />} />
+              <Area
+                dataKey="sentiment"
+                type="monotone"
+                stroke="#ff3e66"
+                fill="#ff3e66"
+                fillOpacity={0.2}
+                strokeWidth={2}
+                isAnimationActive={true}
+                connectNulls
+              />
+              <ChartLegend content={<ChartLegendContent />} />
+            </AreaChart>
+          </ChartContainer>
         </div>
-        {Object.entries(weeklyScores).map(([week, score]) => (
-          <div key={week} className="text-muted-foreground text-sm">
-            Week {week}: Total Positivity Score:{" "}
+
+        <div className="">
+          <div className="text-foreground text-md flex items-center gap-2 font-medium">
+            <TrendingUp className="h-4 w-4 text-pink-500" />
+            Trending up by {improvement} positivity points over the week
+          </div>
+          <div className="text-muted-foreground text-md">
+            Week {currentWeek}: Total Positivity Score:{" "}
             <span className="text-foreground font-semibold">
-              {score.toFixed(1)}
+              {weeklyScore.toFixed(1)}
             </span>
           </div>
-        ))}
-      </div>
-    </div>
+        </div>
+      </CardContent>
+    </Card>
   );
 }

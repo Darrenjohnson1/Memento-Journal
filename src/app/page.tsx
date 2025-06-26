@@ -1,6 +1,7 @@
 import { getUser } from "@/auth/server";
 import AskAIButton from "@/components/AskAIButton";
 import EntryTextInput from "@/components/EntryTextInput";
+import { JournalMock } from "@/components/JournalMock";
 import MockUps from "@/components/MockUps";
 import NewDayCarousel from "@/components/NewDayCarousel";
 import NewDayJournal from "@/components/NewDayJournal";
@@ -100,31 +101,40 @@ async function HomePage({ searchParams }: Props) {
         <h2 className="pt-3 pb-6 text-xl font-semibold">
           The best insights come from within — we help you listen.
         </h2>
-        <Button className="mt-6">
+
+        <div className="mt-6 w-full max-w-4xl">
+          <JournalMock />
+        </div>
+        <Button className="mt-12">
           <Link href="/sign-up">Try Now</Link>
           <ChevronRight />
         </Button>
       </div>
-      <MockUps />
-      <NewDayJournal user={user} entry={entry} />
-      <Separator className="mt-5" />
-      <div className="w-ful mt-6 max-w-4xl">
-        {Array.isArray(weekEntry) && weekEntry.length > 0 ? (
-          <WeeklySentiment entry={weekEntry} />
-        ) : (
-          <></>
-        )}
+      <div className="mt-24 w-full max-w-4xl text-center">
+        <MockUps />
+        <Button className="mt-6">
+          <Link href="/sign-up">View Demo</Link>
+          <ChevronRight />
+        </Button>
       </div>
-      <Separator className="mt-5" />
-      <div className="mt-6 text-center">
-        <h2 className="text-3xl font-semibold">Discover Insights</h2>
-        <h3 className="pt-3 pb-6">
-          Ask ChatterBox about the patterns that shape your week.
-        </h3>
-        <AskAIButton user={user} />
-      </div>
-
-      {/* <EntryTextInput entryId={entryId} startingEntryText={entry?.text || ""} /> */}
+      <footer className="mt-12 h-12 bg-transparent dark:bg-transparent">
+        <div className="px-4 xl:px-6">
+          <div className="flex h-[--footer-height] items-center justify-center">
+            <div className="text-muted-foreground w-full text-center text-xs leading-loose sm:text-sm">
+              Built by{" "}
+              <a
+                href="https://darrendigital.com/"
+                target="_blank"
+                rel="noreferrer"
+                className="font-medium underline underline-offset-4"
+              >
+                DarrenDigital
+              </a>
+              .
+            </div>
+          </div>
+        </div>
+      </footer>
     </div>
   );
 }

@@ -125,7 +125,7 @@ export function WeeklySentiment({ entry }: Props) {
   });
 
   return (
-    <div className="w-full">
+    <div className="w-full max-w-4xl">
       <div className="mb-4">
         <h2 className="text-xl font-semibold">Positivity Score Over Time</h2>
         <p className="text-muted-foreground text-sm">
