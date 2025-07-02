@@ -60,8 +60,8 @@ function SelectEntryButton({ entry }: Props) {
       <Link
         href={
           entry.isOpen === "open"
-            ? `plan/?entryId=${entry.id}`
-            : `journal/?entryId=${entry.id}`
+            ? `/plan/?entryId=${entry.id}`
+            : `/journal/?entryId=${entry.id}`
         }
         className="flex h-fit flex-col"
       >

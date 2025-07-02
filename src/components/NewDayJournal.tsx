@@ -181,7 +181,7 @@ function IncompleteEntry({ entryId }: { entryId: string }) {
         You have an incomplete entry, wrap up planning to get insights.
       </h3>
       <Button asChild className="mt-10 w-20 self-center">
-        <Link href={`plan/?entryId=${entryId}`} className="hidden sm:block">
+        <Link href={`/plan/?entryId=${entryId}`} className="hidden sm:block">
           Finish
         </Link>
       </Button>
@@ -291,7 +291,7 @@ function EndDay({ entryId }: { entryId: string }) {
         Let's talk in the morning and plan for the day! Until then review today.
       </h3>
       <Button asChild className="mt-10 w-20 self-center">
-        <Link href={`journal/?entryId=${entryId}`} className="hidden sm:block">
+        <Link href={`/journal/?entryId=${entryId}`} className="hidden sm:block">
           Review
         </Link>
       </Button>

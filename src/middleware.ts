@@ -41,15 +41,30 @@ export async function updateSession(request: NextRequest) {
 
   const isAuthRoute =
     request.nextUrl.pathname === "/login" ||
-    request.nextUrl.pathname === "/sign-up";
+    request.nextUrl.pathname === "/sign-up" ||
+    request.nextUrl.pathname === "/";
+
+  function getWeekOfYear(date: Date) {
+    const start = new Date(date.getFullYear(), 0, 1);
+    const diff = (date.getTime() - start.getTime()) / 86400000;
+    return Math.ceil((diff + start.getDay() + 1) / 7);
+  }
 
   if (isAuthRoute) {
     const {
       data: { user },
     } = await supabase.auth.getUser();
+
     if (user) {
+      const now = new Date();
+      const weekOfYear = getWeekOfYear(now);
+      const year = now.getFullYear();
+
       return NextResponse.redirect(
-        new URL("/", process.env.NEXT_PUBLIC_BASE_URL),
+        new URL(
+          `/${year}/week/${weekOfYear}`,
+          process.env.NEXT_PUBLIC_BASE_URL,
+        ),
       );
     }
   }

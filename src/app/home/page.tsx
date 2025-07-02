@@ -1,9 +1,11 @@
 import { getUser } from "@/auth/server";
 import AskAIButton from "@/components/AskAIButton";
+import ClientCalendar from "@/components/ClientCalendar";
 import EntryTextInput from "@/components/EntryTextInput";
 import NewDayCarousel from "@/components/NewDayCarousel";
 import NewDayJournal from "@/components/NewDayJournal";
 import NewEntryButton from "@/components/NewEntryButton";
+import { Calendar } from "@/components/ui/calendar";
 import { Carousel } from "@/components/ui/carousel";
 import { Separator } from "@/components/ui/separator";
 import { WeeklySentiment } from "@/components/WeeklySentiment";
@@ -15,7 +17,7 @@ type Props = {
   searchParams: Promise<{ [key: string]: string | string[] | undefined }>;
 };
 
-async function Week({ searchParams }: Props) {
+async function Home({ searchParams }: Props) {
   const entryIdParam = (await searchParams).entryId;
   const user = await getUser();
 
@@ -69,6 +71,7 @@ async function Week({ searchParams }: Props) {
   console.log(entry);
   return (
     <div className="flex h-full flex-col items-center gap-4">
+      <ClientCalendar />
       <NewDayJournal user={user} entry={entry} />
       <Separator className="mt-5" />
       <div className="w-ful mt-6 max-w-4xl">
@@ -92,4 +95,4 @@ async function Week({ searchParams }: Props) {
   );
 }
 
-export default Week;
+export default Home;
