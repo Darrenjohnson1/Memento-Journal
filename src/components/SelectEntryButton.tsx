@@ -10,7 +10,35 @@ import { useSearchParams } from "next/navigation";
 import React, { useEffect, useState } from "react";
 import { SidebarMenuButton } from "./ui/sidebar";
 import Link from "next/link";
-import { Badge } from "./ui/badge";
+// import { Badge } from "./ui/badge";
+
+function sentimentToColor(sentiment: number): string {
+  if (sentiment > 0) return "#16a34a"; // green
+  if (sentiment < 0) return "#eab308"; // yellow
+  return "#a3a3a3"; // gray for neutral
+}
+
+function AnimatedHourglass() {
+  const [flipped, setFlipped] = useState(false);
+
+  useEffect(() => {
+    // 4s total, flip at 2s
+    const interval = setInterval(() => {
+      setFlipped((f) => !f);
+    }, 2000); // 2000ms = half of 4s
+    return () => clearInterval(interval);
+  }, []);
+
+  return (
+    <span
+      role="img"
+      aria-label="hourglass"
+      className={`hourglass-tip${flipped ? " hourglass-flip" : ""}`}
+    >
+      ⏳
+    </span>
+  );
+}
 
 function SelectEntryButton({ entry }: Props) {
   const entryId = useSearchParams().get("entryId") || "";
@@ -52,6 +80,25 @@ function SelectEntryButton({ entry }: Props) {
     return <div className="text-red-500">{error}</div>;
   }
 
+  // Determine if entry is partial and before/after 5pm
+  let showPartialClock = false;
+  let showPartialReady = false;
+  if (entry.isOpen === "partial") {
+    const now = new Date();
+    const entryDate = new Date(entry.updatedAt);
+    const isSameDay =
+      now.getFullYear() === entryDate.getFullYear() &&
+      now.getMonth() === entryDate.getMonth() &&
+      now.getDate() === entryDate.getDate();
+    const fivePmEntryDate = new Date(entryDate.getFullYear(), entryDate.getMonth(), entryDate.getDate(), 17, 0, 0, 0);
+
+    if (isSameDay && now.getTime() < fivePmEntryDate.getTime()) {
+      showPartialClock = true;
+    } else if ((isSameDay && now.getTime() >= fivePmEntryDate.getTime()) || now > fivePmEntryDate) {
+      showPartialReady = true;
+    }
+  }
+
   return (
     <SidebarMenuButton
       asChild
@@ -65,41 +112,29 @@ function SelectEntryButton({ entry }: Props) {
         }
         className="flex h-fit flex-col"
       >
-        <p className="w-full truncate overflow-hidden text-ellipsis whitespace-nowrap">
+        <p className="w-full overflow-hidden break-words line-clamp-2">
           {entryObject.title}
         </p>
 
         <div className="flex h-5 w-full flex-row justify-between gap-2">
-          <p className="text-muted-foreground text-xs">
-            {entry.updatedAt.toLocaleDateString()}
-          </p>
-          {entry.isOpen !== "closed" ? (
-            ""
-          ) : (
-            <Badge
-              className=""
-              style={{
-                backgroundColor:
-                  entryObject.sentiment < 0
-                    ? "yellow"
-                    : entryObject.sentiment > 0
-                      ? "green"
-                      : "gray",
-                color:
-                  entryObject.sentiment < 0
-                    ? "black"
-                    : entryObject.sentiment > 0
-                      ? "white"
-                      : "white", // text color on gray
-              }}
-            >
-              {entryObject.sentiment > 0
-                ? "Positive"
-                : entryObject.sentiment < 0
-                  ? "Challenging"
-                  : "Neutral"}
-            </Badge>
-          )}
+          <span className="flex items-center gap-1 text-muted-foreground text-xs">
+            {showPartialClock ? (
+              <span title="Awaiting response window">
+                <AnimatedHourglass />
+              </span>
+            ) : showPartialReady ? (
+              <span title="Ready for response">
+                <span role="img" aria-label="ready" className="bell-ring">🔔</span>
+              </span>
+            ) : entry.isOpen === "closed" && entryObject.sentiment !== undefined ? (
+              <span
+                className="inline-block h-2 w-2 rounded-full"
+                style={{ backgroundColor: sentimentToColor(entryObject.sentiment) }}
+                title={`Sentiment: ${entryObject.sentiment}`}
+              />
+            ) : null}
+            {entry.createdAt.toLocaleDateString("en-US", { year: "numeric", month: "short", day: "numeric" })}
+          </span>
         </div>
       </Link>
     </SidebarMenuButton>

@@ -1,3 +1,4 @@
+import Header from "@/components/Header";
 import { getUser } from "@/auth/server";
 import NewDayCarousel from "@/components/NewDayCarousel";
 import prisma from "@/db/prisma";
@@ -29,11 +30,14 @@ async function page({ searchParams }: Props) {
   
 
   return (
-    <div className="flex h-full flex-col items-center gap-4">
-      <div className="flex w-full max-w-4xl justify-center gap-2">
-        <NewDayCarousel entry={entry} />
+    <>
+      <Header />
+      <div className="flex h-full flex-col items-center gap-4">
+        <div className="flex w-full max-w-4xl justify-center gap-2">
+          <NewDayCarousel entry={entry} />
+        </div>
       </div>
-    </div>
+    </>
   );
 }
 

@@ -33,6 +33,20 @@ function AskAIButtonMobile({ user }: Props) {
   const [questions, setQuestions] = useState<string[]>([]);
   const [responses, setResponses] = useState<string[]>([]);
 
+  const insightfulQuestions = [
+    "Do you want to know which day you were most positive this week?",
+    "Would you like to see a summary of your mood trends?",
+    "Are you curious about how your entries this week compare to last week?",
+    "Want to know which words you used most often in your journal?",
+    "Would you like to see if there's a pattern to your most productive days?",
+    "Do you want to know if your mood improved as the week went on?",
+    "Interested in which topics you wrote about most this week?",
+    "Would you like to see your average sentiment score for the week?",
+    "Curious if there's a link between your sleep and your mood this week?",
+  ];
+
+  const [suggestedQuestion, setSuggestedQuestion] = useState(insightfulQuestions[0]);
+
   const handleOnOpenChange = (isOpen: boolean) => {
     if (!user) {
       router.push("/");
@@ -41,6 +55,7 @@ function AskAIButtonMobile({ user }: Props) {
         setQuestionText("");
         setQuestions([]);
         setResponses([]);
+        setSuggestedQuestion(insightfulQuestions[Math.floor(Math.random() * insightfulQuestions.length)]);
       }
       setOpen(isOpen);
     }
@@ -63,8 +78,8 @@ function AskAIButtonMobile({ user }: Props) {
 
   const handleSubmit = () => {
     if (!questionText.trim()) return;
-    const newQuestions = [...questions, questionText];
-    setQuestions(newQuestions);
+    const newQuestions = [suggestedQuestion, questionText, ...questions];
+    setQuestions([questionText, ...questions]);
     setQuestionText("");
     setTimeout(scrollToBottom, 100);
 
@@ -72,9 +87,9 @@ function AskAIButtonMobile({ user }: Props) {
       const response = await AskAIAboutEntryAction(newQuestions, responses);
       console.log("AI response:", response);
       if (typeof response === "string") {
-        setResponses((prev) => [...prev, response]);
+        setResponses((prev) => [response, ...prev]);
       } else {
-        setResponses((prev) => [...prev, "Null Response"]);
+        setResponses((prev) => ["Null Response", ...prev]);
       }
       console.log(response);
       setTimeout(scrollToBottom, 100);
@@ -95,15 +110,14 @@ function AskAIButtonMobile({ user }: Props) {
     }
   };
 
-  const phrases = [
-    "What are you curious about?",
-    "Curious about anything recently?",
-    "I know about you. Ask.",
-    "I'm here if you need me.",
-    "What would you like to know?",
-  ];
+  const handleGetAnotherQuestion = () => {
+    let next;
+    do {
+      next = insightfulQuestions[Math.floor(Math.random() * insightfulQuestions.length)];
+    } while (next === suggestedQuestion && insightfulQuestions.length > 1);
+    setSuggestedQuestion(next);
+  };
 
-  const randomPhrase = phrases[Math.floor(Math.random() * phrases.length)];
   return (
     <Dialog open={open} onOpenChange={handleOnOpenChange}>
       <DialogTrigger asChild>
@@ -117,9 +131,16 @@ function AskAIButtonMobile({ user }: Props) {
           </DialogDescription>
         </DialogHeader>
         <div className="mt-4 flex flex-col gap-8">
-          <p className="bot-response question text-muted-foreground text-sm">
-            {randomPhrase}
-          </p>
+          <div className="flex flex-col items-center gap-2">
+            <p className="bot-response question text-muted-foreground text-sm">
+              {suggestedQuestion}
+            </p>
+            <div className="w-full flex justify-center">
+              <Button size="sm" variant="outline" onClick={handleGetAnotherQuestion} type="button">
+                Get Another Question
+              </Button>
+            </div>
+          </div>
           {questions.map((question, index) => (
             <Fragment key={index}>
               <p className="response ml-auto max-w-[60%] rounded-md px-2 py-1 text-sm">

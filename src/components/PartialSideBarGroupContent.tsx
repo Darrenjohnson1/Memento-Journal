@@ -34,7 +34,7 @@ function PartialSideBarGroupContent({ entry }: Props) {
 
   return (
     <SidebarGroupContentShadCN>
-      <SidebarMenu className="mt-4">
+      <SidebarMenu>
         {filteredEntry.map((entry) => (
           <SidebarMenuItem key={entry.id} className="group/item">
             <SelectEntryButton entry={entry} />

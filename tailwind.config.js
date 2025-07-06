@@ -6,7 +6,14 @@ module.exports = {
     "./src/app/**/*.{js,ts,jsx,tsx,mdx}",
   ],
   theme: {
-    extend: {},
+    extend: {
+      fontFamily: {
+        funnel: ["var(--font-funnel-display)", "sans-serif"],
+      },
+      animation: {
+        'spin-slow': 'spin 2s linear infinite',
+      },
+    },
   },
   plugins: [],
 };

@@ -16,60 +16,72 @@ import { Input } from "./ui/input";
 import Fuse from "fuse.js";
 import SelectEntryButton from "./SelectEntryButton";
 import DeleteEntryButton from "./DeleteEntryButton";
+import { getDateOfISOWeek } from "@/lib/utils";
+
+function getWeekDays(startDate: Date): Date[] {
+  return Array.from({ length: 7 }).map((_, i) => {
+    const d = new Date(startDate);
+    d.setUTCDate(startDate.getUTCDate() + i);
+    return d;
+  });
+}
+
+function isSameDay(date1: Date, date2: Date): boolean {
+  return (
+    date1.getUTCFullYear() === date2.getUTCFullYear() &&
+    date1.getUTCMonth() === date2.getUTCMonth() &&
+    date1.getUTCDate() === date2.getUTCDate()
+  );
+}
+
+function formatDayName(date: Date): string {
+  return date.toLocaleDateString("en-US", { weekday: "short" });
+}
 
 function SideBarGroupContent({ entry }: Props) {
-  const [searchText, setSearchText] = useState("");
-  const [localEntry, setLocalEntry] = useState(entry);
+  // Show the week of the earliest (oldest) entry, or current week if no entries
+  const now = new Date();
+  const oldest = entry.length > 0 ? new Date(entry[entry.length - 1].createdAt) : now;
+  const weekStart = getDateOfISOWeek(getISOWeek(oldest), oldest.getFullYear());
+  const weekDays = getWeekDays(weekStart);
 
-  useEffect(() => {
-    setLocalEntry(entry);
-  }, [entry]);
+  function getISOWeek(date: Date): number {
+    const tmp = new Date(Date.UTC(date.getUTCFullYear(), date.getUTCMonth(), date.getUTCDate()));
+    const dayNum = tmp.getUTCDay() || 7;
+    tmp.setUTCDate(tmp.getUTCDate() + 4 - dayNum);
+    const yearStart = new Date(Date.UTC(tmp.getUTCFullYear(), 0, 1));
+    return Math.ceil((((tmp.getTime() - yearStart.getTime()) / 86400000) + 1) / 7);
+  }
 
-  // Filter out entries that are open or partially open
-  const filteredOutInProgress = useMemo(() => {
-    return localEntry.filter((entry) => entry.isOpen === "closed");
-  }, [localEntry]);
-
-  // Fuse is created only from filtered entries
-  const fuse = useMemo(() => {
-    return new Fuse(filteredOutInProgress, {
-      keys: ["text"],
-      threshold: 0.4,
-    });
-  }, [filteredOutInProgress]);
-
-  const filteredEntry = searchText
-    ? fuse.search(searchText).map((result) => result.item)
-    : filteredOutInProgress;
-
-  const deleteEntryLocally = (entryId: string) => {
-    setLocalEntry((prevEntry) =>
-      prevEntry.filter((entry) => entry.id !== entryId),
+  // Map each day to its entry (if any)
+  const entriesByDay = weekDays.map((date) => {
+    const found = entry.find(
+      (e) => e && e.createdAt && isSameDay(new Date(e.createdAt), date)
     );
-  };
+    return { date, entry: found };
+  });
 
   return (
     <SidebarGroupContentShadCN>
-      {/* <div className="item-center relative flex">
-        <SearchIcon className="absolute top-3 left-3 size-3" />
-        <Input
-          className="bg-muted pl-8"
-          placeholder="Search your journal..."
-          value={searchText}
-          onChange={(e) => setSearchText(e.target.value)}
-        />
-      </div> */}
-      <SidebarMenu className="mt-4">
-        {filteredEntry.map((entry) => (
-          <SidebarMenuItem key={entry.id} className="group/item">
-            <SelectEntryButton entry={entry} />
-            <DeleteEntryButton
-              entryId={entry.id}
-              deleteEntryLocally={deleteEntryLocally}
-            />
-          </SidebarMenuItem>
+      <div className="grid gap-1 text-center w-full min-w-0">
+        {entriesByDay.map(({ date, entry }) => (
+          <div key={date.toISOString()} className="flex flex-col items-start gap-1 w-full min-w-0 mt-2">
+            <span className="text-muted-foreground text-xs">
+              {formatDayName(date)}
+            </span>
+            {entry ? (
+              <div className="flex flex-row items-center gap-1 w-full">
+                <SelectEntryButton entry={entry} />
+                <DeleteEntryButton entryId={entry.id} deleteEntryLocally={() => {}} />
+              </div>
+            ) : (
+              <span className="h-6 w-full rounded bg-muted opacity-40 border border-dashed border-gray-400 flex items-center justify-center text-xs text-gray-400 p-0">
+                –
+              </span>
+            )}
+          </div>
         ))}
-      </SidebarMenu>
+      </div>
     </SidebarGroupContentShadCN>
   );
 }

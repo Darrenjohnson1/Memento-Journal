@@ -143,3 +143,53 @@
 think {
   display: none;
 }
+
+@keyframes hourglass-tip {
+  0% {
+    transform: rotate(0deg);
+  }
+  20% {
+    transform: rotate(0deg);
+  }
+  50% {
+    transform: rotate(-180deg);
+  }
+  80% {
+    transform: rotate(180deg);
+  }
+  100% {
+    transform: rotate(0deg);
+  }
+}
+
+.hourglass-tip {
+  display: inline-block;
+  transform: rotate(180deg);
+  transform-origin: 50% 55%;
+}
+
+.hourglass-flip {
+  transform: rotate(0deg);
+  transition: transform 0.2s;
+}
+
+@keyframes bell-ring {
+  0% { transform: rotate(0deg);}
+  10% { transform: rotate(-15deg);}
+  20% { transform: rotate(10deg);}
+  30% { transform: rotate(-10deg);}
+  40% { transform: rotate(6deg);}
+  50% { transform: rotate(-4deg);}
+  60% { transform: rotate(0deg);}
+  100% { transform: rotate(0deg);}
+}
+
+.bell-ring {
+  display: inline-block;
+  animation: bell-ring 4s ease-in-out infinite;
+}
+
+/* Remove extra space/overlay from vaul bottom drawer */
+[data-vaul-drawer][data-vaul-drawer-direction=bottom]::after {
+  display: none !important;
+}

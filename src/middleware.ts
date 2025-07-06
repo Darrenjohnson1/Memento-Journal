@@ -44,10 +44,16 @@ export async function updateSession(request: NextRequest) {
     request.nextUrl.pathname === "/sign-up" ||
     request.nextUrl.pathname === "/";
 
-  function getWeekOfYear(date: Date) {
-    const start = new Date(date.getFullYear(), 0, 1);
-    const diff = (date.getTime() - start.getTime()) / 86400000;
-    return Math.ceil((diff + start.getDay() + 1) / 7);
+  function getISOWeek(date: Date) {
+    const target = new Date(date.valueOf());
+    const dayNr = (date.getDay() + 6) % 7;
+    target.setDate(target.getDate() - dayNr + 3);
+    const firstThursday = target.valueOf();
+    target.setMonth(0, 1);
+    if (target.getDay() !== 4) {
+      target.setMonth(0, 1 + ((4 - target.getDay()) + 7) % 7);
+    }
+    return 1 + Math.ceil((firstThursday - target.valueOf()) / 604800000);
   }
 
   if (isAuthRoute) {
@@ -57,7 +63,7 @@ export async function updateSession(request: NextRequest) {
 
     if (user) {
       const now = new Date();
-      const weekOfYear = getWeekOfYear(now);
+      const weekOfYear = getISOWeek(now);
       const year = now.getFullYear();
 
       return NextResponse.redirect(

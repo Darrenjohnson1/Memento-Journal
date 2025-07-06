@@ -15,6 +15,7 @@ import Link from "next/link";
 type Props = {
   user: User | null;
   entry: Entry | null;
+  forceCountdown?: boolean;
 };
 
 function hasEntryToday(entry: Entry | null) {
@@ -45,7 +46,7 @@ function getFormattedDate() {
   });
 }
 
-function NewDayJournal({ user, entry }: Props) {
+function NewDayJournal({ user, entry, forceCountdown = false }: Props) {
   const [questionText, setQuestionText] = useState("");
   const [loading, setLoading] = useState(false);
   const [timeLeft, setTimeLeft] = useState("");
@@ -53,8 +54,6 @@ function NewDayJournal({ user, entry }: Props) {
   const router = useRouter();
 
   const entryExists = hasEntryToday(entry);
-  console.log("entryExists:", entryExists);
-  console.log("entry.isOpen:", entry?.isOpen);
 
   useEffect(() => {
     const interval = setInterval(() => {
@@ -86,7 +85,7 @@ function NewDayJournal({ user, entry }: Props) {
       description: "You have started a new journal entry",
     });
     await createEntryAction(uuid, questionText);
-    router.push(`plan/?entryId=${uuid}`);
+    router.push(`/plan/?entryId=${uuid}`);
   };
 
   const handleUpdateEntry = async (entry?: Entry) => {
@@ -112,6 +111,10 @@ function NewDayJournal({ user, entry }: Props) {
 
   const now = new Date();
   const isAfterFive = now.getHours() >= 17;
+
+  if (forceCountdown) {
+    return <CompleteEntry timeLeft={timeLeft} />;
+  }
 
   if (entryExists) {
     switch (entry?.isOpen) {
@@ -141,18 +144,6 @@ function NewDayJournal({ user, entry }: Props) {
         );
       case "closed":
         return <EndDay entryId={entry.id} />;
-      // default:
-      //   return isAfterFive ? (
-      //     <></>
-      //   ) : (
-      //     <PartialEntry
-      //       onSubmit={handleUpdateEntry}
-      //       questionText={questionText}
-      //       setQuestionText={setQuestionText}
-      //       textareaRef={textareaRef}
-      //       entry={entry}
-      //     />
-      //   );
     }
   } else {
     return isAfterFive ? (

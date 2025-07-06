@@ -80,7 +80,7 @@ export const createEntryAction = async (
           - Your questions should vary in structure and format to stay engaging.
 
           Use the following input types for variety:
-          1. Open-Ended Paragraph (e.g., "What’s one thing you’re proud of from today?")
+          1. Open-Ended Paragraph (e.g., "What's one thing you're proud of from today?")
           2. Close-Ended Sentence (e.g., "Did you feel in control of your time today?")
           3. Likert Rating Scale (e.g., "On a scale of 1–5, how well did you manage stress today?")
 
@@ -99,7 +99,7 @@ export const createEntryAction = async (
 
           —
 
-          **Today’s Journal Entry:**
+          **Today's Journal Entry:**
           ${journalText}
 
           **Entries from the Past 7 Days:**
@@ -292,7 +292,7 @@ export const followUpEntryAction = async (
         role: "system",
         content: `
           You are a warm and thoughtful journaling assistant.
-          Based on the user’s journal entry, generate 2–3 follow-up reflection questions to encourage gentle self-awareness and insight.
+          Based on the user's journal entry, generate 2–3 follow-up reflection questions to encourage gentle self-awareness and insight.
           The tone should be light, observant, and curious — not overly therapeutic or intense unless the content calls for it.
           Vary the question formats (open-ended paragraph, close-ended sentence, and Likert scale) to keep engagement fresh.
           Keep the questions relevant to what the user wrote, helping them reflect on patterns, values, or small joys.
@@ -323,7 +323,7 @@ export const followUpEntryAction = async (
           **Today's Earlier Planning Journal:**
           ${todaysFormattedEntry}
 
-          **Today’s Journal Follow Up:**
+          **Today's Journal Follow Up:**
           ${journalText}
 
           **Entries from the Past 7 Days:**
@@ -466,36 +466,49 @@ export const deleteEntryAction = async (entryId: string) => {
 export const AskAIAboutEntryAction = async (
   newQuestion: string[],
   responses: string[],
+  weekEntries?: any[],
 ) => {
   try {
     const user = await getUser();
     if (!user) throw new Error("You must be logged in to get AI responses");
 
-    const entry = await prisma.entry.findMany({
-      where: { authorId: user.id },
-      orderBy: { createdAt: "desc" },
-      select: {
-        userResponse: true,
-        createdAt: true,
-        updatedAt: true,
-        summary: true,
-      },
-    });
-
-    if (entry.length === 0) {
-      return "You don't have any journal entries yet";
+    let formattedEntry = "";
+    if (weekEntries && weekEntries.length > 0) {
+      formattedEntry = weekEntries
+        .map((entry) =>
+          `
+          Text: ${JSON.stringify(entry.userResponse)}
+          Created at: ${entry.createdAt}
+          Last updated: ${entry.updatedAt}
+          Previous AI Summary: ${JSON.stringify(entry.summary)}
+        `.trim(),
+        )
+        .join("\n");
+    } else {
+      const entry = await prisma.entry.findMany({
+        where: { authorId: user.id },
+        orderBy: { createdAt: "desc" },
+        select: {
+          userResponse: true,
+          createdAt: true,
+          updatedAt: true,
+          summary: true,
+        },
+      });
+      if (entry.length === 0) {
+        return "You don't have any journal entries yet";
+      }
+      formattedEntry = entry
+        .map((entry) =>
+          `
+          Text: ${JSON.stringify(entry.userResponse)}
+          Created at: ${entry.createdAt}
+          Last updated: ${entry.updatedAt}
+          Previous AI Summary: ${entry.summary}
+        `.trim(),
+        )
+        .join("\n");
     }
-
-    const formattedEntry = entry
-      .map((entry) =>
-        `
-        Text: ${JSON.stringify(entry.userResponse)}
-        Created at: ${entry.createdAt}
-        Last updated: ${entry.updatedAt}
-        Previous AI Summary: ${entry.summary}
-      `.trim(),
-      )
-      .join("\n");
 
     const messages = [
       {

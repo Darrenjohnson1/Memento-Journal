@@ -1,6 +1,6 @@
 "use client";
 
-import { createContext, useState } from "react";
+import { createContext, useState, ReactNode } from "react";
 
 type EntryProviderContextType = {
   entryText: string;
@@ -12,7 +12,13 @@ export const EntryProviderContext = createContext<EntryProviderContextType>({
   setEntryText: () => {},
 });
 
-function EntryProvider({ children }: { children: React.ReactNode }) {
+type EntryProviderProps = {
+  children: ReactNode;
+  year: string;
+  weekofyear: string;
+};
+
+function EntryProvider({ children, year, weekofyear }: EntryProviderProps) {
   const [entryText, setEntryText] = useState("");
 
   return (

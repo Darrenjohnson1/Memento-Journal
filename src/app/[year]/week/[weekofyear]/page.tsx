@@ -6,24 +6,12 @@ import WeeklyCalendar from "@/components/WeeklyCalendar";
 import { WeeklySentiment } from "@/components/WeeklySentiment";
 import prisma from "@/db/prisma";
 import { Entry } from "@prisma/client";
+import { getDateOfISOWeek } from "@/lib/utils";
 
 type Props = {
   searchParams: Promise<{ [key: string]: string | string[] | undefined }>;
   params: { year: string; weekofyear: string };
 };
-
-function getDateOfISOWeek(week: number, year: number): Date {
-  const simple = new Date(year, 0, 1 + (week - 1) * 7);
-  const dow = simple.getDay();
-  const ISOweekStart = new Date(simple);
-  if (dow <= 4) {
-    ISOweekStart.setDate(simple.getDate() - simple.getDay() + 1); // Monday
-  } else {
-    ISOweekStart.setDate(simple.getDate() + 8 - simple.getDay());
-  }
-  ISOweekStart.setHours(0, 0, 0, 0);
-  return ISOweekStart;
-}
 
 async function Week({ searchParams, params }: Props) {
   const query = await searchParams;
@@ -82,7 +70,6 @@ async function Week({ searchParams, params }: Props) {
           createdAt: "asc",
         },
       });
-      console.log(weekEntry);
     }
   } catch (error: any) {
     if (error.code === "P1001") {
@@ -92,14 +79,34 @@ async function Week({ searchParams, params }: Props) {
     throw error;
   }
 
+  // Convert createdAt/updatedAt to string for WeeklyCalendar
+  const weekEntryStringDates = weekEntry.map(e => {
+    if (!e) return e;
+    let summaryObj = null;
+    try { summaryObj = e.summary ? JSON.parse(e.summary) : null; } catch { summaryObj = null; }
+    return {
+      ...e,
+      createdAt: e.createdAt.toISOString(),
+      updatedAt: e.updatedAt.toISOString(),
+      summary: summaryObj,
+    };
+  });
+  const entryStringDates = entry ? {
+    ...entry,
+    createdAt: entry.createdAt.toISOString(),
+    updatedAt: entry.updatedAt.toISOString(),
+    summary: (() => { try { return entry.summary ? JSON.parse(entry.summary) : null; } catch { return null; } })(),
+  } : entry;
+
   return (
     <div className="flex h-full flex-col items-center gap-4">
       <WeeklyCalendar
-        entries={weekEntry}
+        entries={weekEntryStringDates}
         initialWeek={week}
         initialYear={year}
+        user={user}
+        entry={entryStringDates}
       />
-      <NewDayJournal user={user} entry={entry} />
 
       <Separator className="mt-5" />
 
@@ -120,7 +127,7 @@ async function Week({ searchParams, params }: Props) {
         <h3 className="pt-3 pb-6">
           Ask ChatterBox about the patterns that shape your week.
         </h3>
-        <AskAIButton user={user} />
+        <AskAIButton user={user} weekEntries={weekEntryStringDates} />
       </div>
     </div>
   );

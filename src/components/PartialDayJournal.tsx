@@ -58,14 +58,14 @@ function PartialDayJournal({ user, entry }: Props) {
 
   // Timer for time left until 5 PM if before 5 PM today
   useEffect(() => {
-    if (!entryExistsToday || pastFiveOnEntryDay) {
+    if (!entryDate || pastFiveOnEntryDay) {
       setTimeLeft("");
       return;
     }
 
     const interval = setInterval(() => {
       const now = new Date();
-      const fivePm = new Date();
+      const fivePm = new Date(entryDate);
       fivePm.setHours(17, 0, 0, 0);
 
       if (now >= fivePm) {
@@ -81,7 +81,7 @@ function PartialDayJournal({ user, entry }: Props) {
     }, 1000);
 
     return () => clearInterval(interval);
-  }, [entryExistsToday, pastFiveOnEntryDay]);
+  }, [entryDate, pastFiveOnEntryDay]);
 
   const handleNewEntry = async () => {
     if (!user) return router.push("/login");
@@ -108,9 +108,8 @@ function PartialDayJournal({ user, entry }: Props) {
 
   if (loading) return <LoadingState />;
 
-  // Entry exists today
-  if (!pastFiveOnEntryDay) {
-    // Before 5 PM on entry day → "Come back later"
+  // Only show the timer if the entry is for today, it's before 5pm, and the entry is not closed
+  if (entryExistsToday && !pastFiveOnEntryDay && entry?.isOpen !== "closed") {
     return <CompleteEntry timeLeft={timeLeft} />;
   }
 

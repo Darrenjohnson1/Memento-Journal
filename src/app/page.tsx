@@ -17,6 +17,7 @@ import { ArrowRight, ChevronRight } from "lucide-react";
 import { Funnel_Display } from "next/font/google";
 import Link from "next/link";
 import React from "react";
+import Header from "@/components/Header";
 
 type Props = {
   searchParams: Promise<{ [key: string]: string | string[] | undefined }>;
@@ -81,61 +82,64 @@ async function HomePage({ searchParams }: Props) {
   }
   console.log(entry);
   return (
-    <div className="flex h-full flex-col items-center gap-4">
-      <div className="mt-6 text-center">
-        <Badge
-          variant="secondary"
-          className="mb-5 rounded-full border-1 border-gray-200 bg-white px-4 py-1.5 text-base font-medium"
-        >
-          🧠 AI Mindfulness Journal
-        </Badge>
-        <h1
-          className="text-5xl font-semibold"
-          style={{
-            fontFamily: '"Funnel Display", sans-serif',
-            fontWeight: 700,
-          }}
-        >
-          Turn Down the Chatter,<br></br> Tune Into What Matters.
-        </h1>
-        <h2 className="pt-3 pb-6 text-xl font-semibold">
-          The best insights come from within — we help you listen.
-        </h2>
+    <>
+      <Header />
+      <div className="flex h-full flex-col items-center gap-4">
+        <div className="mt-6 text-center">
+          <Badge
+            variant="secondary"
+            className="mb-5 rounded-full border-1 border-gray-200 bg-white px-4 py-1.5 text-base font-medium"
+          >
+            🧠 AI Mindfulness Journal
+          </Badge>
+          <h1
+            className="text-5xl font-semibold"
+            style={{
+              fontFamily: '"Funnel Display", sans-serif',
+              fontWeight: 700,
+            }}
+          >
+            Turn Down the Chatter,<br></br> Tune Into What Matters.
+          </h1>
+          <h2 className="pt-3 pb-6 text-xl font-semibold">
+            The best insights come from within — we help you listen.
+          </h2>
 
-        <div className="mt-6 w-full max-w-4xl">
-          <JournalMock />
+          <div className="mt-6 w-full max-w-4xl">
+            <JournalMock />
+          </div>
+          <Button className="mt-12">
+            <Link href="/sign-up">Try Now</Link>
+            <ChevronRight />
+          </Button>
         </div>
-        <Button className="mt-12">
-          <Link href="/sign-up">Try Now</Link>
-          <ChevronRight />
-        </Button>
-      </div>
-      <div className="mt-24 w-full max-w-4xl text-center">
-        <MockUps />
-        <Button className="mt-6">
-          <Link href="/sign-up">View Demo</Link>
-          <ChevronRight />
-        </Button>
-      </div>
-      <footer className="mt-12 h-12 bg-transparent dark:bg-transparent">
-        <div className="px-4 xl:px-6">
-          <div className="flex h-[--footer-height] items-center justify-center">
-            <div className="text-muted-foreground w-full text-center text-xs leading-loose sm:text-sm">
-              Built by{" "}
-              <a
-                href="https://darrendigital.com/"
-                target="_blank"
-                rel="noreferrer"
-                className="font-medium underline underline-offset-4"
-              >
-                DarrenDigital
-              </a>
-              .
+        <div className="mt-24 w-full max-w-4xl text-center">
+          <MockUps />
+          <Button className="mt-6">
+            <Link href="/sign-up">View Demo</Link>
+            <ChevronRight />
+          </Button>
+        </div>
+        <footer className="mt-12 h-12 bg-transparent dark:bg-transparent">
+          <div className="px-4 xl:px-6">
+            <div className="flex h-[--footer-height] items-center justify-center">
+              <div className="text-muted-foreground w-full text-center text-xs leading-loose sm:text-sm">
+                Built by{" "}
+                <a
+                  href="https://darrendigital.com/"
+                  target="_blank"
+                  rel="noreferrer"
+                  className="font-medium underline underline-offset-4"
+                >
+                  DarrenDigital
+                </a>
+                .
+              </div>
             </div>
           </div>
-        </div>
-      </footer>
-    </div>
+        </footer>
+      </div>
+    </>
   );
 }
 
