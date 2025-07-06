@@ -16,6 +16,8 @@ import DraftSideBarGroupContent from "./DraftSideBarGroupContent";
 import PartialSideBarGroupContent from "./PartialSideBarGroupContent";
 import SideBarGroupContent from "./SideBarGroupContent";
 
+export const dynamic = "force-dynamic";
+
 function getDateOfISOWeek(week: number, year: number): Date {
   const simple = new Date(year, 0, 1 + (week - 1) * 7);
   const dow = simple.getDay();
