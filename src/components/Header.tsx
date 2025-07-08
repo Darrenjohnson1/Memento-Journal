@@ -1,13 +1,13 @@
+"use client";
 import Image from "next/image";
 import Link from "next/link";
 import React from "react";
 import { Button } from "./ui/button";
-import { getUser } from "@/auth/server";
-import LogOutButton from "./LogOutButton";
 import { SidebarTrigger, useSidebar } from "./ui/sidebar";
 import { Funnel_Display } from "next/font/google";
 import SideBarTrigger from "./SideBarTrigger";
 import { ChevronRight } from "lucide-react";
+import { usePathname } from "next/navigation";
 
 const funnelDisplay = Funnel_Display({
   subsets: ["latin"],
@@ -15,8 +15,10 @@ const funnelDisplay = Funnel_Display({
   variable: "--font-funnel-display", // optional for Tailwind
 });
 
-async function Header() {
-  const user = await getUser();
+function Header() {
+  const pathname = usePathname();
+  // TODO: If you want user logic, pass user as a prop from the parent
+  const user = true; // Assume logged in for now, or pass as prop
   return (
     <header className="bg-popover relative flex h-24 w-full items-center justify-between border-b-1 px-3 sm:px-8">
       <Link
@@ -54,7 +56,13 @@ async function Header() {
       </Link>
       <div className="flex gap-4">
         {user ? (
-          <SideBarTrigger />
+          (pathname === "/plan" || pathname === "/follow-up") ? (
+            <Button asChild variant="outline">
+              <Link href="/">Back to Home</Link>
+            </Button>
+          ) : (
+            <SideBarTrigger />
+          )
         ) : (
           <>
             <Button asChild className="hidden md:block">

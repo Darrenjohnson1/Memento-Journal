@@ -7,13 +7,8 @@ import { ChevronLeft, ChevronRight, FileText, Clock, CheckCircle2 } from "lucide
 import { getDateOfISOWeek } from "@/lib/utils";
 import React, { useEffect, useState } from "react";
 import NewDayJournal from "./NewDayJournal";
-
-type Entry = {
-  id: string;
-  createdAt: string; // ISO date string
-  summary: { sentiment: number } | null;
-  isOpen?: "open" | "closed" | string;
-};
+import type { Entry as PrismaEntry } from "@prisma/client";
+type Entry = PrismaEntry;
 
 type Props = {
   initialWeek: number;
@@ -138,10 +133,17 @@ export default function WeeklyCalendar({
           e !== null &&
           e.createdAt !== undefined &&
           e.summary !== null &&
-          e.summary.sentiment !== undefined &&
+          (() => { try { return typeof e.summary === 'string' ? JSON.parse(e.summary).sentiment !== undefined : (e.summary as any).sentiment !== undefined; } catch { return false; } })() &&
           isSameDay(new Date(e.createdAt), date),
       )
-      .map((e) => e.summary!.sentiment);
+      .map((e) => {
+        if (!e) return null;
+        try {
+          return typeof e.summary === 'string' ? JSON.parse(e.summary).sentiment : (e.summary as any).sentiment;
+        } catch {
+          return null;
+        }
+      });
 
     if (sentiments.length === 0) return null;
 
@@ -176,7 +178,14 @@ export default function WeeklyCalendar({
 
   // Calculate average positivity score for the week
   const weekSentiments = entries
-    .map(e => e && e.summary && typeof e.summary.sentiment === 'number' ? e.summary.sentiment : null)
+    .map(e => {
+      if (!e) return null;
+      let sentiment = null;
+      try {
+        sentiment = typeof e.summary === 'string' ? JSON.parse(e.summary).sentiment : (e.summary as any).sentiment;
+      } catch {}
+      return sentiment !== null && typeof sentiment === 'number' ? sentiment : null;
+    })
     .filter((s): s is number => s !== null && s !== undefined);
   // Cumulative positivity score for the week (translated)
   const weekSentimentTotal = weekSentiments
@@ -219,7 +228,39 @@ export default function WeeklyCalendar({
         {/* New Day entry component or weekly wrap up placeholder */}
         {isCurrentWeek ? (
           <div className="mt-8 mb-10 w-full max-w-4xl mx-auto">
-            <NewDayJournal user={user} entry={entry} forceCountdown={true} />
+            {(() => {
+              // Find today's entry
+              const todayDate = new Date();
+              const todayEntry = getEntryForDate(todayDate);
+              // Map to correct shape if entry exists
+              if (todayEntry) {
+                const mappedEntry: Entry = {
+                  ...todayEntry,
+                  summary: typeof todayEntry.summary === 'string' ? todayEntry.summary : JSON.stringify(todayEntry.summary ?? ''),
+                  journalEntry: todayEntry.journalEntry ?? {},
+                  journalEntry2: todayEntry.journalEntry2 ?? {},
+                  userResponse: todayEntry.userResponse ?? {},
+                  userResponse2: todayEntry.userResponse2 ?? {},
+                  isOpen: todayEntry.isOpen ?? 'open',
+                  authorId: todayEntry.authorId ?? '',
+                  createdAt: todayEntry.createdAt ? new Date(todayEntry.createdAt) : new Date(),
+                  updatedAt: todayEntry.updatedAt ? new Date(todayEntry.updatedAt) : new Date(),
+                  id: todayEntry.id,
+                };
+                // Only force countdown for 'partial' or 'open', not for 'partial_open' after 5pm
+                const now = new Date();
+                const isAfterFive = now.getHours() >= 17;
+                if (mappedEntry.isOpen === 'partial' || (mappedEntry.isOpen === 'open')) {
+                  return <NewDayJournal user={user} entry={mappedEntry} forceCountdown={true} />;
+                } else if (mappedEntry.isOpen === 'partial_open' && isAfterFive) {
+                  return <NewDayJournal user={user} entry={mappedEntry} />;
+                } else {
+                  return <NewDayJournal user={user} entry={mappedEntry} />;
+                }
+              } else {
+                return <NewDayJournal user={user} entry={null} />;
+              }
+            })()}
           </div>
         ) : (
           <div className="mt-8 mb-10 w-full max-w-4xl mx-auto flex flex-col items-center">
@@ -304,10 +345,7 @@ export default function WeeklyCalendar({
                           }
                         }
                         // Sentiment dot for closed
-                        let entryObject = entry.summary;
-                        if (typeof entry.summary === 'string') {
-                          try { entryObject = JSON.parse(entry.summary); } catch {}
-                        }
+                        let entryObject = (() => { try { return typeof entry.summary === 'string' ? JSON.parse(entry.summary) : (entry.summary as any) || {}; } catch { return {}; } })();
                         if (entry.isOpen === "closed" && entryObject && typeof entryObject.sentiment === 'number') {
                           return <>
                             <span className="text-[10px] text-muted-foreground mb-0.5">Completed</span>

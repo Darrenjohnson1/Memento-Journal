@@ -71,9 +71,9 @@ export default async function WeekLayout({ children, params }: WeekLayoutProps) 
     const entriesToClose = entries.filter(entry => {
       if (entry.isOpen === "partial" || entry.isOpen === "open" || entry.isOpen === "partial_open") {
         const entryDate = new Date(entry.updatedAt);
-        // Close if it's after 5pm on the same day or any time after that day
-        const fivePm = new Date(entryDate.getFullYear(), entryDate.getMonth(), entryDate.getDate(), 17, 0, 0, 0);
-        return now > fivePm;
+        // Only close if more than 24 hours have passed since last update
+        const twentyFourHoursLater = new Date(entryDate.getTime() + 24 * 60 * 60 * 1000);
+        return now > twentyFourHoursLater;
       }
       return false;
     });

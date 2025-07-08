@@ -111,22 +111,26 @@ export function NewDayCarousel({ entry }: any) {
   };
 
   return (
-    <div className="w-80">
+    <div className="w-full max-w-xs sm:max-w-sm mx-auto">
       <Carousel
         opts={{ watchDrag: false }}
         setApi={setCarouselApi}
-        className="w-full max-w-xs"
+        className="w-full"
       >
         <CarouselContent style={{ userSelect: "none" }}>
           {questions.map((q, index) => (
             <CarouselItem key={index}>
               <div className="p-1">
                 <Card>
-                  <CardContent className="flex aspect-square flex-col justify-center p-6">
-                    <h1 className="pb-5 text-2xl font-semibold">
+                  <CardContent
+                    className="flex flex-col justify-center p-4 sm:p-6 min-h-[180px] sm:aspect-square"
+                  >
+                    <h1 className="pb-3 text-lg sm:text-2xl font-semibold">
                       {index + 1}.
                     </h1>
-                    <div className="text-2xl font-semibold">{q.question}</div>
+                    <div className="break-words text-base sm:text-2xl font-semibold">
+                      {q.question}
+                    </div>
                   </CardContent>
                 </Card>
               </div>

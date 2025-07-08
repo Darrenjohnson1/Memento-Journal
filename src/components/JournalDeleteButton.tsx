@@ -2,13 +2,14 @@
 
 import React from "react";
 import { Button } from "@/components/ui/button";
+import { deleteEntryAction } from "@/actions/entry";
 
 export default function JournalDeleteButton({ entryId }: { entryId: string }) {
   return (
     <Button
       variant="destructive"
       onClick={async () => {
-        await fetch(`/api/entry/${entryId}`, { method: 'DELETE' });
+        await deleteEntryAction(entryId);
         window.location.href = '/';
       }}
     >

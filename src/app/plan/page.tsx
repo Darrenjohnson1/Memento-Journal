@@ -3,6 +3,8 @@ import { getUser } from "@/auth/server";
 import NewDayCarousel from "@/components/NewDayCarousel";
 import prisma from "@/db/prisma";
 import React from "react";
+import Link from "next/link";
+import { Button } from "@/components/ui/button";
 
 type Props = {
   searchParams: Promise<{ [key: string]: string | string[] | undefined }>;
@@ -32,6 +34,11 @@ async function page({ searchParams }: Props) {
   return (
     <>
       <Header />
+      <div className="flex w-full max-w-4xl mx-auto mt-2 mb-4">
+        <Button asChild variant="outline">
+          <Link href="/">Back to Home</Link>
+        </Button>
+      </div>
       <div className="flex h-full flex-col items-center gap-4">
         <div className="flex w-full max-w-4xl justify-center gap-2">
           <NewDayCarousel entry={entry} />

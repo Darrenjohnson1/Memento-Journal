@@ -113,35 +113,34 @@ function NewDayJournal({ user, entry, forceCountdown = false }: Props) {
   const isAfterFive = now.getHours() >= 17;
 
   if (forceCountdown) {
-    return <CompleteEntry timeLeft={timeLeft} />;
+    return <CompleteEntry timeLeft={timeLeft} entryId={entry?.id ?? ""} />;
   }
 
+  // Only show countdown if there is a partial entry for today
+  if (entryExists && entry?.isOpen === "partial") {
+    return <CompleteEntry timeLeft={timeLeft} entryId={entry?.id ?? ""} />;
+  }
+
+  // Nighttime state for partial_open after 5pm
+  if (entryExists && entry?.isOpen === "partial_open" && isAfterFive) {
+    return (
+      <div className="align-center flex flex-col text-center">
+        <h2 className="text-3xl font-semibold">Unfinished Draft</h2>
+        <h3 className="mt-3">You have a journal draft from earlier today. Finish it to get your insights!</h3>
+        <Button asChild className="mt-10 w-32 self-center">
+          <Link href={`/follow-up?entryId=${entry.id}`}>Continue Draft</Link>
+        </Button>
+      </div>
+    );
+  }
+
+  // All other cases: show the appropriate entry UI
   if (entryExists) {
     switch (entry?.isOpen) {
       case "open":
-        return isAfterFive ? (
-          <CompleteEntry timeLeft={timeLeft} />
-        ) : (
-          <IncompleteEntry entryId={entry.id} />
-        );
+        return <IncompleteEntry entryId={entry.id} />;
       case "partial_open":
-        return isAfterFive ? (
-          <CompleteEntry timeLeft={timeLeft} />
-        ) : (
-          <IncompleteEntry entryId={entry.id} />
-        );
-      case "partial":
-        return isAfterFive ? (
-          <PartialEntry
-            onSubmit={handleUpdateEntry}
-            questionText={questionText}
-            setQuestionText={setQuestionText}
-            textareaRef={textareaRef}
-            entry={entry}
-          />
-        ) : (
-          <CompleteEntry timeLeft={timeLeft} />
-        );
+        return <IncompleteEntry entryId={entry.id} />;
       case "closed":
         return <EndDay entryId={entry.id} />;
     }
@@ -185,13 +184,11 @@ function PartialEntry({
   questionText,
   setQuestionText,
   textareaRef,
-  entry,
 }: {
   onSubmit: (entry?: Entry) => void;
   questionText: string;
   setQuestionText: (v: string) => void;
-  textareaRef: React.RefObject<HTMLTextAreaElement>;
-  entry?: Entry;
+  textareaRef: React.RefObject<HTMLTextAreaElement | null>;
 }) {
   return (
     <div className="flex h-full w-full max-w-4xl flex-col">
@@ -212,7 +209,7 @@ function PartialEntry({
         <Button
           type="button"
           className="ml-auto size-8 rounded-full"
-          onClick={() => onSubmit(entry)}
+          onClick={() => onSubmit()}
         >
           <ArrowUpIcon className="text-background" />
         </Button>
@@ -229,7 +226,12 @@ function PreStartEntry({
   questionText,
   setQuestionText,
   textareaRef,
-}: any) {
+}: {
+  onSubmit: () => void;
+  questionText: string;
+  setQuestionText: (v: string) => void;
+  textareaRef: React.RefObject<HTMLTextAreaElement | null>;
+}) {
   return (
     <div className="flex w-full max-w-4xl flex-col">
       <h1 className="w-auto text-2xl font-bold">
@@ -261,7 +263,7 @@ function PreStartEntry({
   );
 }
 
-function CompleteEntry({ timeLeft }: { timeLeft: string }) {
+function CompleteEntry({ timeLeft, entryId }: { timeLeft: string, entryId: string }) {
   return (
     <div className="align-center flex flex-col text-center">
       <h2 className="text-3xl font-semibold">You're going to do great!</h2>
@@ -270,6 +272,11 @@ function CompleteEntry({ timeLeft }: { timeLeft: string }) {
         day.
       </h3>
       <h3 className="mt-3 animate-pulse">{timeLeft}</h3>
+      <Button asChild className="mt-10 w-20 self-center">
+        <Link href={`/plan/?entryId=${entryId}`} className="hidden sm:block">
+          View Draft
+        </Link>
+      </Button>
     </div>
   );
 }
