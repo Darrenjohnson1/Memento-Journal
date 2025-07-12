@@ -46,6 +46,12 @@ function getFormattedDate() {
   });
 }
 
+function sentimentToColor(sentiment: number): string {
+  if (sentiment >= 70) return "#16a34a"; // green
+  if (sentiment >= 40) return "#eab308"; // yellow
+  return "#ef4444"; // red
+}
+
 function NewDayJournal({ user, entry, forceCountdown = false }: Props) {
   const [questionText, setQuestionText] = useState("");
   const [loading, setLoading] = useState(false);
@@ -54,6 +60,11 @@ function NewDayJournal({ user, entry, forceCountdown = false }: Props) {
   const router = useRouter();
 
   const entryExists = hasEntryToday(entry);
+
+  const now = new Date();
+  const isAfterFive = now.getHours() >= 17;
+
+  console.log('NewDayJournal debug:', { entry, entryExists, isAfterFive, forceCountdown });
 
   useEffect(() => {
     const interval = setInterval(() => {
@@ -84,7 +95,7 @@ function NewDayJournal({ user, entry, forceCountdown = false }: Props) {
     toast.success("Let's get ready for the day!", {
       description: "You have started a new journal entry",
     });
-    await createEntryAction(uuid, questionText);
+    await createEntryAction(uuid, questionText, new Date());
     router.push(`/plan/?entryId=${uuid}`);
   };
 
@@ -102,22 +113,19 @@ function NewDayJournal({ user, entry, forceCountdown = false }: Props) {
       description: "Updating today's journal entry",
     });
 
-    await followUpEntryAction(questionText, journalID);
+    await followUpEntryAction(questionText, journalID, new Date());
 
     router.push(`/follow-up?entryId=${journalID}`);
   };
 
   if (loading) return <LoadingState />;
 
-  const now = new Date();
-  const isAfterFive = now.getHours() >= 17;
-
   if (forceCountdown) {
     return <CompleteEntry timeLeft={timeLeft} entryId={entry?.id ?? ""} />;
   }
 
   // Only show countdown if there is a partial entry for today
-  if (entryExists && entry?.isOpen === "partial") {
+  if (entryExists && entry?.isOpen === "partial" && !isAfterFive) {
     return <CompleteEntry timeLeft={timeLeft} entryId={entry?.id ?? ""} />;
   }
 
@@ -138,9 +146,18 @@ function NewDayJournal({ user, entry, forceCountdown = false }: Props) {
   if (entryExists) {
     switch (entry?.isOpen) {
       case "open":
-        return <IncompleteEntry entryId={entry.id} />;
       case "partial_open":
         return <IncompleteEntry entryId={entry.id} />;
+      case "partial":
+        return (
+          <PartialEntry
+            onSubmit={handleUpdateEntry}
+            questionText={questionText}
+            setQuestionText={setQuestionText}
+            textareaRef={textareaRef}
+            entry={entry}
+          />
+        );
       case "closed":
         return <EndDay entryId={entry.id} />;
     }
@@ -151,6 +168,7 @@ function NewDayJournal({ user, entry, forceCountdown = false }: Props) {
         questionText={questionText}
         setQuestionText={setQuestionText}
         textareaRef={textareaRef}
+        entry={entry}
       />
     ) : (
       <PreStartEntry
@@ -158,6 +176,7 @@ function NewDayJournal({ user, entry, forceCountdown = false }: Props) {
         questionText={questionText}
         setQuestionText={setQuestionText}
         textareaRef={textareaRef}
+        entry={entry}
       />
     );
   }
@@ -184,11 +203,13 @@ function PartialEntry({
   questionText,
   setQuestionText,
   textareaRef,
+  entry,
 }: {
   onSubmit: (entry?: Entry) => void;
   questionText: string;
   setQuestionText: (v: string) => void;
   textareaRef: React.RefObject<HTMLTextAreaElement | null>;
+  entry?: Entry | null;
 }) {
   return (
     <div className="flex h-full w-full max-w-4xl flex-col">
@@ -214,9 +235,9 @@ function PartialEntry({
           <ArrowUpIcon className="text-background" />
         </Button>
       </div>
-      <h3 className="mt-5 w-fit self-end text-sm font-medium text-gray-500">
-        {getFormattedDate()}
-      </h3>
+      <div className="mt-5 w-fit self-end flex items-center gap-2">
+        <span className="text-sm font-medium text-gray-500">{getFormattedDate()}</span>
+      </div>
     </div>
   );
 }
@@ -226,11 +247,13 @@ function PreStartEntry({
   questionText,
   setQuestionText,
   textareaRef,
+  entry,
 }: {
   onSubmit: () => void;
   questionText: string;
   setQuestionText: (v: string) => void;
   textareaRef: React.RefObject<HTMLTextAreaElement | null>;
+  entry?: Entry | null;
 }) {
   return (
     <div className="flex w-full max-w-4xl flex-col">
@@ -256,9 +279,16 @@ function PreStartEntry({
           <ArrowUpIcon className="text-background" />
         </Button>
       </div>
-      <h3 className="mt-5 w-fit self-end text-sm font-medium text-gray-500">
-        {getFormattedDate()}
-      </h3>
+      <div className="mt-5 w-fit self-end flex items-center gap-2">
+        {entry && typeof entry.sentiment === 'number' && (
+          <span
+            className="inline-block h-3 w-3 rounded-full mr-1"
+            style={{ backgroundColor: sentimentToColor(entry.sentiment) }}
+            title={`Positivity: ${entry.sentiment}`}
+          />
+        )}
+        <span className="text-sm font-medium text-gray-500">{getFormattedDate()}</span>
+      </div>
     </div>
   );
 }
@@ -272,9 +302,9 @@ function CompleteEntry({ timeLeft, entryId }: { timeLeft: string, entryId: strin
         day.
       </h3>
       <h3 className="mt-3 animate-pulse">{timeLeft}</h3>
-      <Button asChild className="mt-10 w-20 self-center">
-        <Link href={`/plan/?entryId=${entryId}`} className="hidden sm:block">
-          View Draft
+      <Button asChild className="mt-10 w-32 self-center">
+        <Link href={`/journal/?entryId=${entryId}`} className="hidden sm:block">
+          Review Today
         </Link>
       </Button>
     </div>

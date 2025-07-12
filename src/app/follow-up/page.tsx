@@ -32,7 +32,7 @@ async function page({ searchParams }: Props) {
 
   return (
     <>
-      <Header />
+      <Header user={user} />
       <div className="flex w-full max-w-4xl mx-auto mt-2 mb-4">
         <Button asChild variant="outline">
           <Link href="/">Back to Home</Link>

@@ -9,13 +9,13 @@ import React, { useEffect, useState } from "react";
 import NewDayJournal from "./NewDayJournal";
 import type { Entry as PrismaEntry } from "@prisma/client";
 type Entry = PrismaEntry;
+import { isSameLocalDay } from "@/lib/utils";
 
 type Props = {
   initialWeek: number;
   initialYear: number;
   entries: Array<Entry | null>;
   user: any;
-  entry: any;
 };
 
 function getWeekOfYear(date: Date): number {
@@ -47,17 +47,16 @@ function formatDayNumber(date: Date): number {
 }
 
 function isSameDay(date1: Date, date2: Date): boolean {
-  return (
-    date1.getUTCFullYear() === date2.getUTCFullYear() &&
-    date1.getUTCMonth() === date2.getUTCMonth() &&
-    date1.getUTCDate() === date2.getUTCDate()
-  );
+  return isSameLocalDay(date1, date2);
 }
 
+// Use the same sentimentToColor logic as AppSideBar/SelectEntryButton
 function sentimentToColor(sentiment: number): string {
-  if (sentiment > 0) return "#16a34a"; // green
-  if (sentiment < 0) return "#eab308"; // yellow
-  return "#a3a3a3"; // gray for neutral
+  if (sentiment >= 75) return "#16a34a"; // green for positive
+  return "#eab308"; // yellow for challenging
+}
+function sentimentType(sentiment: number): string {
+  return sentiment >= 75 ? "Positive" : "Challenging";
 }
 
 function AnimatedHourglass() {
@@ -87,10 +86,9 @@ export default function WeeklyCalendar({
   initialYear,
   entries,
   user,
-  entry,
 }: Props) {
   const router = useRouter();
-
+  console.log(entries)
   const goToPreviousWeek = () => {
     let newWeek = initialWeek - 1;
     let newYear = initialYear;
@@ -111,7 +109,9 @@ export default function WeeklyCalendar({
     }
     router.push(`/${newYear}/week/${newWeek}`);
   };
+  console.log(entries)
 
+  // Use this function for weekStart and weekDays
   const weekStart = getDateOfISOWeek(initialWeek, initialYear);
   const weekDays = getWeekDays(weekStart);
   const weekEnd = weekDays[6];
@@ -126,24 +126,26 @@ export default function WeeklyCalendar({
     return `${start.toLocaleDateString("en-US", options)}–${end.toLocaleDateString("en-US", options)}`;
   }
 
+  // Helper to get the local start of a day
+  function getLocalDayStart(date: Date) {
+    return new Date(date.getFullYear(), date.getMonth(), date.getDate(), 0, 0, 0, 0);
+  }
+
+  // Helper to get the local end of a day
+  function getLocalDayEnd(date: Date) {
+    return new Date(date.getFullYear(), date.getMonth(), date.getDate(), 23, 59, 59, 999);
+  }
+
   const getSentimentForDate = (date: Date): number | null => {
     const sentiments = entries
       .filter(
         (e): e is Entry =>
           e !== null &&
           e.createdAt !== undefined &&
-          e.summary !== null &&
-          (() => { try { return typeof e.summary === 'string' ? JSON.parse(e.summary).sentiment !== undefined : (e.summary as any).sentiment !== undefined; } catch { return false; } })() &&
-          isSameDay(new Date(e.createdAt), date),
+          typeof e.sentiment === 'number' &&
+          isSameLocalDay(new Date(e.createdAt), date),
       )
-      .map((e) => {
-        if (!e) return null;
-        try {
-          return typeof e.summary === 'string' ? JSON.parse(e.summary).sentiment : (e.summary as any).sentiment;
-        } catch {
-          return null;
-        }
-      });
+      .map((e) => e.sentiment);
 
     if (sentiments.length === 0) return null;
 
@@ -151,14 +153,16 @@ export default function WeeklyCalendar({
     return Number.isFinite(avg) ? avg : null;
   };
 
+  // Updated getEntryForDate to use local time for both entry and date
   const getEntryForDate = (date: Date): Entry | null => {
+    const dayStart = getLocalDayStart(date);
+    const dayEnd = getLocalDayEnd(date);
     return (
-      entries.find(
-        (e) =>
-          e !== null &&
-          e.createdAt !== undefined &&
-          isSameDay(new Date(e.createdAt), date),
-      ) ?? null
+      entries.find((e) => {
+        if (!e || !e.createdAt) return false;
+        const entryDate = new Date(e.createdAt);
+        return entryDate >= dayStart && entryDate <= dayEnd;
+      }) ?? null
     );
   };
 
@@ -178,19 +182,13 @@ export default function WeeklyCalendar({
 
   // Calculate average positivity score for the week
   const weekSentiments = entries
-    .map(e => {
-      if (!e) return null;
-      let sentiment = null;
-      try {
-        sentiment = typeof e.summary === 'string' ? JSON.parse(e.summary).sentiment : (e.summary as any).sentiment;
-      } catch {}
-      return sentiment !== null && typeof sentiment === 'number' ? sentiment : null;
-    })
+    .map(e => (e && typeof e.sentiment === 'number' ? e.sentiment : null))
     .filter((s): s is number => s !== null && s !== undefined);
-  // Cumulative positivity score for the week (translated)
-  const weekSentimentTotal = weekSentiments
-    .map(s => ((s + 1) / 2) * 10)
-    .reduce((a, b) => a + b, 0);
+  // Cumulative positivity score for the week (0-100 scale)
+  const weekSentimentTotal = weekSentiments.reduce((a, b) => a + b, 0);
+
+
+    
 
   return (
     <>
@@ -247,13 +245,10 @@ export default function WeeklyCalendar({
                   updatedAt: todayEntry.updatedAt ? new Date(todayEntry.updatedAt) : new Date(),
                   id: todayEntry.id,
                 };
-                // Only force countdown for 'partial' or 'open', not for 'partial_open' after 5pm
                 const now = new Date();
                 const isAfterFive = now.getHours() >= 17;
-                if (mappedEntry.isOpen === 'partial' || (mappedEntry.isOpen === 'open')) {
+                if (!isAfterFive && (mappedEntry.isOpen === 'partial' || mappedEntry.isOpen === 'open')) {
                   return <NewDayJournal user={user} entry={mappedEntry} forceCountdown={true} />;
-                } else if (mappedEntry.isOpen === 'partial_open' && isAfterFive) {
-                  return <NewDayJournal user={user} entry={mappedEntry} />;
                 } else {
                   return <NewDayJournal user={user} entry={mappedEntry} />;
                 }
@@ -275,8 +270,8 @@ export default function WeeklyCalendar({
         <div className="grid grid-cols-2 sm:grid-cols-4 md:grid-cols-7 gap-2 text-center mt-8">
           {weekDays.map((date) => {
             const isToday = isSameDay(date, today);
-            const sentiment = getSentimentForDate(date);
-            const entry = getEntryForDate(date);
+            const entry = getEntryForDate(date); //
+            console.log("this is the entry", entry)
 
             let todayBorder = '';
             if (isToday) {
@@ -302,24 +297,30 @@ export default function WeeklyCalendar({
               }
             }
             return (
-              <div
-                key={date.toISOString()}
-                className={`flex flex-col items-center bg-background border rounded-lg p-2 min-w-0 flex-1${todayBorder}`}
-                style={{ minHeight: '90px' }}
-              >
-                <span className="text-muted-foreground text-xs mb-1">
-                  {formatDayName(date)}
-                </span>
-                {entry ? (
+              (entry ? (
+                <Link
+                  key={date.toISOString()}
+                  href={`/journal/?entryId=${entry.id}`}
+                  className={`flex flex-col items-center border rounded-lg p-2 min-w-0 flex-1${todayBorder} ${entry.isOpen === 'closed' ? 'bg-muted border-gray-400' : 'bg-background'} cursor-pointer`}
+                  style={{ minHeight: '90px', textDecoration: 'none' }}
+                >
+                  <span className="text-muted-foreground text-xs mb-1">
+                    {formatDayName(date)}
+                  </span>
+                  <span className="text-muted-foreground text-[11px] mb-1 block">
+                    {formatDayNumber(date)}
+                  </span>
                   <div className="flex flex-col items-center justify-center gap-1 w-full h-full">
-                    <Link
-                      href={`/journal/?entryId=${entry.id}`}
+                    <span
                       className={
-                        "mt-2 block w-full truncate rounded bg-muted px-2 py-1 text-xs font-medium text-foreground transition hover:bg-accent hover:text-accent-foreground"
+                        `mt-2 block w-full truncate rounded px-2 py-1 text-xs font-medium text-foreground ` +
+                        (entry.isOpen === 'closed' ? 'bg-white' : 'bg-muted') +
+                        ' border-0'
                       }
+                      style={{ pointerEvents: 'none' }}
                     >
-                      {formatDayNumber(date)}
-                    </Link>
+                      {typeof entry.sentiment === 'number' ? Math.round(entry.sentiment) : '–'}
+                    </span>
                     {/* Status label and indicator at the bottom */}
                     <div className="flex flex-col items-center justify-end w-full mt-auto min-h-[32px]">
                       {(() => {
@@ -345,27 +346,44 @@ export default function WeeklyCalendar({
                           }
                         }
                         // Sentiment dot for closed
-                        let entryObject = (() => { try { return typeof entry.summary === 'string' ? JSON.parse(entry.summary) : (entry.summary as any) || {}; } catch { return {}; } })();
-                        if (entry.isOpen === "closed" && entryObject && typeof entryObject.sentiment === 'number') {
+                        if (entry.isOpen === "closed" && typeof entry.sentiment === 'number') {
+                          console.log('Sentiment for dot:', entry.sentiment, typeof entry.sentiment, 'Date:', entry.createdAt);
                           return <>
-                            <span className="text-[10px] text-muted-foreground mb-0.5">Completed</span>
-                            <span
-                              className="inline-block h-2 w-2 rounded-full"
-                              style={{ backgroundColor: sentimentToColor(entryObject.sentiment) }}
-                              title={`Sentiment: ${entryObject.sentiment}`}
-                            />
+                            <span className="flex items-center gap-1 opacity-60">
+                              <span
+                                className="inline-block h-2 w-2 rounded-full"
+                                style={{ backgroundColor: sentimentToColor(entry.sentiment), opacity: 0.7 }}
+                                title={`Positivity: ${entry.sentiment}`}
+                              />
+                              <span className="text-xs font-medium" style={{ color: sentimentToColor(entry.sentiment) }}>
+                                {sentimentType(entry.sentiment)}
+                              </span>
+                            </span>
+                            <span className="text-[10px] text-muted-foreground mt-0.5 block">Completed</span>
                           </>;
                         }
                         return null;
                       })()}
                     </div>
                   </div>
-                ) : (
+                </Link>
+              ) : (
+                <div
+                  key={date.toISOString()}
+                  className={`flex flex-col items-center border rounded-lg p-2 min-w-0 flex-1${todayBorder} bg-background`}
+                  style={{ minHeight: '90px' }}
+                >
+                  <span className="text-muted-foreground text-xs mb-1">
+                    {formatDayName(date)}
+                  </span>
+                  <span className="text-muted-foreground text-[11px] mb-1 block">
+                    {formatDayNumber(date)}
+                  </span>
                   <span className="mt-2 block w-full rounded bg-muted px-2 py-1 text-xs text-gray-400 opacity-40 border border-dashed border-gray-400">
                     –
                   </span>
-                )}
-              </div>
+                </div>
+              ))
             );
           })}
         </div>

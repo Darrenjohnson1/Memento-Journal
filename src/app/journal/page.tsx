@@ -35,6 +35,21 @@ async function page({ searchParams }: Props) {
         authorId: user.id,
         id: entryId,
       },
+      select: {
+        id: true,
+        createdAt: true,
+        updatedAt: true,
+        journalEntry: true,
+        journalEntry2: true,
+        userResponse: true,
+        userResponse2: true,
+        summary: true,
+        isOpen: true,
+        authorId: true,
+        sentiment: true,
+        tags: true,
+        negativePhrases: true,
+      },
     });
   }
 
@@ -42,12 +57,13 @@ async function page({ searchParams }: Props) {
 
   return (
     <>
-      <Header />
-      <div className="flex h-full flex-col items-center gap-4">
-        <div className="bg-popover relative flex w-full max-w-4xl items-center justify-between border-b-1 pb-6">
+      <Header user={user} />
+      <div className="w-full max-w-4xl mx-auto">
+        <div className="bg-gray-200 flex items-center justify-between px-6 py-4 rounded-b-2xl shadow-sm">
           <div className="flex items-center gap-2">
-            {/* Simple back button using router.back() */}
             <BackButton />
+          </div>
+          <div className="text-right w-full">
             <h1 className="text-3xl font-medium">
               {entry?.createdAt.toLocaleString("en-US", {
                 year: "numeric",
@@ -56,10 +72,10 @@ async function page({ searchParams }: Props) {
               })}
             </h1>
           </div>
-          {entry && <JournalDeleteButton entryId={entry.id} />}
-          {/* <FollowUpButton /> */}
         </div>
-        <div className="flex w-full max-w-4xl flex-col justify-center gap-2">
+      </div>
+      <div className="flex h-full flex-col items-center gap-8 pt-8 pb-16 bg-background min-h-screen">
+        <div className="flex w-full max-w-4xl flex-col justify-center gap-6 px-4">
           <JournalEntry entry={entry} />
         </div>
         {entry.append ? (
@@ -71,6 +87,11 @@ async function page({ searchParams }: Props) {
             <p className="mt-5 text-lg"></p>
             {entry.append}
             {/* <FollowUpButton /> */}
+          </div>
+        )}
+        {entry && (
+          <div className="flex w-full max-w-4xl justify-center mt-12 px-4">
+            <JournalDeleteButton entryId={entry.id} />
           </div>
         )}
       </div>

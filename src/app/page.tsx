@@ -83,7 +83,7 @@ async function HomePage({ searchParams }: Props) {
   console.log(entry);
   return (
     <>
-      <Header />
+      <Header user={user} />
       <div className="flex h-full flex-col items-center gap-4">
         <div className="mt-6 text-center">
           <Badge

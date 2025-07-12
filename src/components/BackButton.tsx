@@ -7,7 +7,7 @@ export default function BackButton() {
   return (
     <button
       type="button"
-      onClick={() => router.back()}
+      onClick={() => router.push("/")}
       className="flex items-center gap-1 text-muted-foreground hover:text-foreground transition-colors"
       aria-label="Go back"
     >

@@ -51,6 +51,19 @@ export default async function WeekLayout({ children, params }: WeekLayoutProps) 
         orderBy: {
           updatedAt: "desc",
         },
+        select: {
+          id: true,
+          createdAt: true,
+          updatedAt: true,
+          journalEntry: true,
+          journalEntry2: true,
+          userResponse: true,
+          userResponse2: true,
+          summary: true,
+          isOpen: true,
+          authorId: true,
+          sentiment: true,
+        },
       });
     }
     dbUser = await prisma.user.findUnique({
@@ -65,6 +78,7 @@ export default async function WeekLayout({ children, params }: WeekLayoutProps) 
       },
     });
   }
+  
   // Auto-close logic: close entries past allowed time
   if (user && weekStartDate && weekEndDate && entries.length > 0) {
     const now = new Date();
@@ -139,7 +153,7 @@ export default async function WeekLayout({ children, params }: WeekLayoutProps) 
     <EntryProvider year={year} weekofyear={weekofyear}>
       <SidebarProvider>
         <div className="flex min-h-screen w-full flex-col">
-          <Header />
+          <Header user={user} />
           <main className="flex flex-1 flex-col px-4 pt-10 xl:px-8">
             {children}
           </main>

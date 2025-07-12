@@ -33,12 +33,8 @@ async function page({ searchParams }: Props) {
 
   return (
     <>
-      <Header />
-      <div className="flex w-full max-w-4xl mx-auto mt-2 mb-4">
-        <Button asChild variant="outline">
-          <Link href="/">Back to Home</Link>
-        </Button>
-      </div>
+      <Header user={user} />
+      {/* Removed Back to Home button */}
       <div className="flex h-full flex-col items-center gap-4">
         <div className="flex w-full max-w-4xl justify-center gap-2">
           <NewDayCarousel entry={entry} />

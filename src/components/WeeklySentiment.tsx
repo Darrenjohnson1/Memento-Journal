@@ -17,6 +17,7 @@ import {
 } from "recharts";
 import React from "react";
 import { Entry } from "@prisma/client";
+import { getDateOfISOWeek } from "@/lib/utils";
 
 // Chart configuration
 const chartConfig = {
@@ -91,19 +92,15 @@ function getISOWeek(date: Date) {
 
 export function WeeklySentiment({ entry }: Props) {
   // Transform each entry
-  const chartData = entry
-    .map(({ createdAt, summary }) => {
+  const chartDataAll = entry
+    .map(({ createdAt, summary, sentiment }) => {
       try {
         const summaryObj = JSON.parse(summary);
-        const sentiment = Number(summaryObj.sentiment);
-        if (isNaN(sentiment)) return null;
-
-        const normalized = ((sentiment + 1) / 2) * 10;
-
+        if (typeof sentiment !== 'number' || isNaN(sentiment)) return null;
         return {
           day: formatDate(createdAt),
           date: new Date(createdAt),
-          sentiment: normalized,
+          sentiment: sentiment, // 0-100
           summary: summaryObj.summary || "",
         };
       } catch {
@@ -112,6 +109,75 @@ export function WeeklySentiment({ entry }: Props) {
     })
     .filter(Boolean)
     .sort((a, b) => a!.date.getTime() - b!.date.getTime());
+
+  // Determine the ISO week and year to filter by
+  let weekToShow: number, yearToShow: number;
+  if (chartDataAll.length > 0) {
+    const firstDate = chartDataAll[0].date;
+    // getDateOfISOWeek returns the Monday of the ISO week
+    const weekMonday = getDateOfISOWeek(
+      // getISOWeek from WeeklyCalendar logic
+      (() => {
+        const tmp = new Date(Date.UTC(firstDate.getUTCFullYear(), firstDate.getUTCMonth(), firstDate.getUTCDate()));
+        const dayNum = tmp.getUTCDay() || 7;
+        tmp.setUTCDate(tmp.getUTCDate() + 4 - dayNum);
+        const yearStart = new Date(Date.UTC(tmp.getUTCFullYear(), 0, 1));
+        return Math.ceil((((tmp.getTime() - yearStart.getTime()) / 86400000) + 1) / 7);
+      })(),
+      firstDate.getUTCFullYear()
+    );
+    weekToShow = (() => {
+      const tmp = new Date(Date.UTC(firstDate.getUTCFullYear(), firstDate.getUTCMonth(), firstDate.getUTCDate()));
+      const dayNum = tmp.getUTCDay() || 7;
+      tmp.setUTCDate(tmp.getUTCDate() + 4 - dayNum);
+      const yearStart = new Date(Date.UTC(tmp.getUTCFullYear(), 0, 1));
+      return Math.ceil((((tmp.getTime() - yearStart.getTime()) / 86400000) + 1) / 7);
+    })();
+    yearToShow = firstDate.getUTCFullYear();
+    // weekMonday is the start of the week
+  } else {
+    const now = new Date();
+    weekToShow = (() => {
+      const tmp = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate()));
+      const dayNum = tmp.getUTCDay() || 7;
+      tmp.setUTCDate(tmp.getUTCDate() + 4 - dayNum);
+      const yearStart = new Date(Date.UTC(tmp.getUTCFullYear(), 0, 1));
+      return Math.ceil((((tmp.getTime() - yearStart.getTime()) / 86400000) + 1) / 7);
+    })();
+    yearToShow = now.getUTCFullYear();
+  }
+  // Get the Monday of the ISO week
+  const weekStart = getDateOfISOWeek(weekToShow, yearToShow);
+  const weekEnd = new Date(weekStart);
+  weekEnd.setUTCDate(weekStart.getUTCDate() + 6);
+  weekEnd.setUTCHours(23, 59, 59, 999);
+
+  // Filter chartData to only include entries from this ISO week
+  const chartData = chartDataAll.filter(d => d.date >= weekStart && d.date <= weekEnd);
+
+  // Always show all 7 days of the ISO week, even if no entry exists for some days
+  const weekDays: Date[] = Array.from({ length: 7 }).map((_, i) => {
+    const d = new Date(weekStart);
+    d.setUTCDate(weekStart.getUTCDate() + i);
+    return d;
+  });
+
+  // Map each day to an entry or a placeholder
+  const chartDataFull = weekDays.map((date) => {
+    const found = chartData.find(d =>
+      d.date.getUTCFullYear() === date.getUTCFullYear() &&
+      d.date.getUTCMonth() === date.getUTCMonth() &&
+      d.date.getUTCDate() === date.getUTCDate()
+    );
+    return found || {
+      day: date.toLocaleDateString(undefined, { month: "short", day: "numeric" }),
+      date,
+      sentiment: 0,
+      summary: "No entry",
+    };
+  });
+
+  console.log('WeeklySentiment chartDataFull:', chartDataFull);
 
   const first = chartData[0]?.sentiment ?? 0;
   const last = chartData[chartData.length - 1]?.sentiment ?? 0;
@@ -135,7 +201,7 @@ export function WeeklySentiment({ entry }: Props) {
 
       <ChartContainer config={chartConfig}>
         <AreaChart
-          data={chartData}
+          data={chartDataFull}
           margin={{ top: 10, right: 20, left: 0, bottom: 60 }}
         >
           <CartesianGrid vertical={false} strokeDasharray="3 3" />
@@ -150,11 +216,11 @@ export function WeeklySentiment({ entry }: Props) {
             height={50}
           />
           <YAxis
-            domain={[0, 10]}
+            domain={[0, 100]}
             tickCount={6}
             tickLine={false}
             axisLine={false}
-            tickFormatter={(val) => val.toFixed(1)}
+            tickFormatter={(val) => val.toFixed(0)}
           />
           <Tooltip content={<CustomTooltip />} />
           <Area
@@ -165,7 +231,7 @@ export function WeeklySentiment({ entry }: Props) {
             fillOpacity={0.2}
             strokeWidth={2}
             isAnimationActive={true}
-            connectNulls
+            connectNulls={false}
           />
           <ChartLegend content={<ChartLegendContent />} />
         </AreaChart>

@@ -7,16 +7,24 @@ import { handleError } from "@/lib/utils";
 import { Prisma } from "@prisma/client";
 import { NextResponse } from "next/server";
 
+// Helper to strip <think>...</think> from model output
+function extractJsonObjectFromModelResponse(response: string): string {
+  return response.replace(/<think>[\s\S]*?<\/think>/gi, '').trim();
+}
+
 export const createEntryAction = async (
   entryId: string,
   journalText: string,
+  clientLocalDate?: Date,
 ) => {
   try {
     const user = await getUser();
     if (!user) throw new Error("You must be logged in to add a note");
 
-    const oneWeekAgo = new Date();
-    oneWeekAgo.setDate(oneWeekAgo.getDate() - 7);
+    // Use clientLocalDate for local time boundaries if provided
+    const now = clientLocalDate ? new Date(clientLocalDate) : new Date();
+    const oneWeekAgo = new Date(now);
+    oneWeekAgo.setDate(now.getDate() - 7);
 
     let dbUser = await prisma.user.findUnique({
       where: { id: user.id },
@@ -66,82 +74,75 @@ export const createEntryAction = async (
         .join("\n\n"); // Added an extra newline for readability
     }
 
-    const messages = [
+    // Unified AI call for all fields
+    const unifiedPrompt = [
       {
         role: "system",
-        content: `
-          You are a thoughtful and concise journaling assistant.
-
-          Your task is to generate 2–3 insightful, reflective questions to help them plan for the day before it happens, in present tense. Your questions should help the user deepen their self-awareness, reflect on their patterns. The tone should match the user's preferred style: "${userPreference}".
-
-          Assume:
-          - All entries provided are written by the user.
-          - You have access to 7 days of journal context.
-          - Your questions should vary in structure and format to stay engaging.
-
-          Use the following input types for variety:
-          1. Open-Ended Paragraph (e.g., "What's one thing you're proud of from today?")
-          2. Close-Ended Sentence (e.g., "Did you feel in control of your time today?")
-          3. Likert Rating Scale (e.g., "On a scale of 1–5, how well did you manage stress today?")
-
-          **Always respond with valid JSON** in this format:
-
-          [
-            {
-              "question": "Your question here",
-              "inputType": 1
-            },
-            ...
-          ]
-
-
-          If there are no journal entries yet, ask thoughtful, open-ended questions to learn more about the user and their daily life.
-
-          —
-
-          **Today's Journal Entry:**
-          ${journalText}
-
-          **Entries from the Past 7 Days:**
-          ${formattedEntry}
-        `,
+        content: `You are a journaling assistant. Given a user's journal entry, return a single JSON object with the following fields:
+ - title: a creative, engaging, and relevant title for the entry (do NOT use generic titles like 'Journal Entry' or 'My Day'). The title should be story-driven and lean toward a positive, growth-oriented framing, even if the entry discusses challenges.
+ - summary: a concise summary of the entry, written in second person and looking toward the future (e.g., "You will...", "You are going to...").
+ - tags: an array of 1-5 concise tags (single words or short phrases) that best summarize the main topics, emotions, or activities
+ - negativePhrases: an array of objects, each with 'negative' (the negative or self-critical sentence) and 'suggested' (a positive or reframed alternative for that sentence)
+ - positivity: a number from 0-100 representing the overall positivity of the entry
+ - questions: an array of 2-3 reflective questions (each an object with 'question' and 'inputType'). The questions should be insightful, thought-provoking, and encourage deeper self-reflection and growth. Use the user's entries from the past week to make the questions more relevant and connected to their recent experiences. Avoid generic or surface-level questions; make them specific to the user's entry and helpful for personal development.
+Respond ONLY with a valid JSON object, no commentary or extra text. Example:
+{"title": "A Day of Growth", "summary": "...", "tags": ["productivity", "fatigue"], "negativePhrases": [{"negative": "I felt tired.", "suggested": "I did my best despite being tired."}], "positivity": 42, "questions": [{"question": "...", "inputType": 1}]}`
       },
+      {
+        role: "user",
+        content: journalText
+      }
     ];
-    console.log(messages);
-    const out = await HfInference.chatCompletion({
+    const aiOut = await HfInference.chatCompletion({
       model: "Qwen/Qwen3-32B",
       provider: "cerebras",
-      messages,
+      messages: unifiedPrompt,
       max_tokens: 1024,
       temperature: 0.1,
     });
-
-    const rawSummary =
-      out.choices?.[0]?.message?.content || "Error summarizing entry.";
-
-    const cleanSummary = rawSummary
-      .replace(/<think>[\s\S]*?<\/think>/gi, "")
-      .trim();
-
-    console.log(cleanSummary);
-    let parsedSummary = JSON.parse(cleanSummary);
+    const aiContent = aiOut.choices?.[0]?.message?.content || "{}";
+    console.log("[createEntryAction] unified AI model response:", aiContent);
+    const cleanAIContent = extractJsonObjectFromModelResponse(aiContent);
+    let aiObj: any = {};
     try {
+      aiObj = JSON.parse(cleanAIContent);
+    } catch {
+      aiObj = {};
+    }
+    // Fallbacks for missing fields
+    const title = typeof aiObj.title === 'string' ? aiObj.title : '';
+    const summary = typeof aiObj.summary === 'string' ? aiObj.summary : '';
+    const tags = Array.isArray(aiObj.tags) ? aiObj.tags : [];
+    // negativePhrases is now an array of { negative, suggested }
+    const negativePhrases = Array.isArray(aiObj.negativePhrases) ? aiObj.negativePhrases : [];
+    // 75 is now the baseline for positivity; below 75 is considered not positive
+    const positivity = typeof aiObj.positivity === 'number' && !isNaN(aiObj.positivity)
+      ? Math.max(0, Math.min(100, aiObj.positivity))
+      : 0;
+    const questions = Array.isArray(aiObj.questions) ? aiObj.questions : [];
+    // Save all fields to their respective columns
+    try {
+      const createdAt = clientLocalDate ? new Date(clientLocalDate) : new Date();
       const createdEntry = await prisma.entry.create({
         data: {
           id: entryId,
           authorId: user.id,
-          userResponse: cleanSummary,
-          summary: '{"title": "Started Draft"}',
+          userResponse: JSON.stringify(questions),
+          summary: JSON.stringify({ title, summary }),
+          sentiment: positivity,
           isOpen: "open",
+          createdAt,
+          updatedAt: createdAt,
           journalEntry: [
             {
-              timestamp: new Date().toISOString(),
+              timestamp: createdAt.toISOString(),
               text: journalText,
             },
           ],
+          negativePhrases: negativePhrases,
+          tags: tags,
         },
       });
-
       return { success: true, data: createdEntry };
     } catch (err) {
       if (err instanceof Prisma.PrismaClientKnownRequestError) {
@@ -154,7 +155,6 @@ export const createEntryAction = async (
       } else {
         console.error("❓ Unknown Error:", err);
       }
-
       return {
         success: false,
         message: "Failed to create entry. Check server logs for more details.",
@@ -179,9 +179,21 @@ export const updateEntryAction = async (
     const user = await getUser();
     if (!user) throw new Error("You must be logged in to update a note");
 
+    // Extract positivity score from summary
+    let positivity = 0;
+    let summaryString = summary;
+    try {
+      const parsedSummary = JSON.parse(summary);
+      if (typeof parsedSummary.positivity === 'number' && !isNaN(parsedSummary.positivity)) {
+        positivity = Math.max(0, Math.min(100, parsedSummary.positivity));
+      }
+      delete parsedSummary.positivity;
+      summaryString = JSON.stringify(parsedSummary);
+    } catch {}
+
     await prisma.entry.update({
       where: { id: entryId },
-      data: { userResponse, summary, isOpen: "partial" },
+      data: { userResponse, summary: summaryString, sentiment: positivity, isOpen: "partial" },
     });
 
     return { errorMessage: null };
@@ -193,52 +205,26 @@ export const updateEntryAction = async (
 export const followUpEntryAction = async (
   journalText: string,
   entryId: string,
+  clientLocalDate?: Date,
 ) => {
   try {
     const user = await getUser();
     if (!user) throw new Error("You must be logged in to add a note");
 
-    const oneWeekAgo = new Date();
-    oneWeekAgo.setDate(oneWeekAgo.getDate() - 7);
+    // Use clientLocalDate for local time boundaries if provided
+    const now = clientLocalDate ? new Date(clientLocalDate) : new Date();
+    const oneWeekAgo = new Date(now);
+    oneWeekAgo.setDate(now.getDate() - 7);
 
     const dbUser = await prisma.user.findUnique({
       where: { id: user.id },
-      select: {
-        preference: true,
-      },
+      select: { preference: true },
     });
-
     const userPreference = dbUser?.preference;
-
-    const now = new Date();
-    const startOfLogicalDay = new Date(now);
-    startOfLogicalDay.setHours(5, 0, 0, 0);
-    if (now < startOfLogicalDay) {
-      startOfLogicalDay.setDate(startOfLogicalDay.getDate() - 1);
-    }
 
     let existingEntry = await prisma.entry.findUnique({
       where: { id: entryId },
     });
-
-    // const todayEntry = await prisma.entry.findFirst({
-    //   where: {
-    //     authorId: user.id,
-    //     createdAt: {
-    //       gte: startOfLogicalDay,
-    //     },
-    //   },
-    //   orderBy: {
-    //     createdAt: "desc",
-    //   },
-    //   select: {
-    //     journalEntry: true,
-    //     userResponse: true,
-    //     createdAt: true,
-    //     updatedAt: true,
-    //     summary: true,
-    //   },
-    // });
 
     let todaysFormattedEntry = existingEntry
       ? `
@@ -268,16 +254,6 @@ export const followUpEntryAction = async (
     });
 
     const formattedEntry = pastEntries
-      // .map((entry) =>
-      //   `
-      //   Text: ${JSON.stringify(entry.journalEntry)}
-      //   QuestionResponses: ${JSON.stringify(entry.userResponse)}
-      //   Created at: ${entry.createdAt}
-      //   Last updated: ${entry.updatedAt}
-      //   Previous AI Summary: ${entry.summary}
-      //   `.trim(),
-      // )
-      // .join("\n\n");
       .map((entry) =>
         `
         Created at: ${entry.createdAt}
@@ -286,6 +262,33 @@ export const followUpEntryAction = async (
         `.trim(),
       )
       .join("\n\n");
+
+    // Extract tags at follow-up time
+    const tagMessages = [
+      {
+        role: "system",
+        content: `You are an assistant that extracts relevant tags or keywords from a user's journal entry. Always return a JSON array of 1-5 concise tags (single words or short phrases) that best summarize the main topics, emotions, or activities in the entry. Do not include explanations, extra text, or objects—just the array. Only return an empty array if the entry is truly empty or meaningless. Example: ["productivity", "fatigue", "video games", "errands", "connection"]`
+      },
+      {
+        role: "user",
+        content: journalText
+      }
+    ];
+    const tagOut = await HfInference.chatCompletion({
+      model: "Qwen/Qwen3-32B",
+      provider: "cerebras",
+      messages: tagMessages,
+      max_tokens: 128,
+      temperature: 0.1,
+    });
+    const tagContent = tagOut.choices?.[0]?.message?.content || "[]";
+    console.log("[followUpEntryAction] tag extraction model response:", tagContent);
+    let tags: string[] = [];
+    try {
+      tags = JSON.parse(tagContent);
+    } catch {
+      tags = [];
+    }
 
     const messages = [
       {
@@ -347,64 +350,58 @@ export const followUpEntryAction = async (
       .replace(/<think>[\s\S]*?<\/think>/gi, "")
       .trim();
 
-    // const parsedFollowUpQuestions: Record<string, string>[] =
-    //   JSON.parse(cleanSummary);
+    // Extract positivity score from summary
+    let positivity = 0;
+    let summaryString = cleanSummary;
+    try {
+      const parsedSummary = JSON.parse(cleanSummary);
+      if (typeof parsedSummary.positivity === 'number' && !isNaN(parsedSummary.positivity)) {
+        positivity = Math.max(0, Math.min(100, parsedSummary.positivity));
+      }
+      delete parsedSummary.positivity;
+      summaryString = JSON.stringify(parsedSummary);
+    } catch {}
 
-    // Merge new questions with existing userResponse
-    // const existingUserResponse = existingEntry.userResponse || {};
-    // const combinedUserResponse = {
-    //   ...existingUserResponse,
-    //   [`followUp_${new Date().toISOString()}`]: parsedFollowUpQuestions,
-    // };
-
-    // const updatedJournalEntry = [
-    //   ...(existingEntry.journalEntry || []),
-    //   {
-    //     timestamp: new Date().toISOString(),
-    //     text: journalText,
-    //   },
-    // ];
+    // Update or create the entry with follow-up journal, tags, and sentiment
     if (!existingEntry) {
-      const updated = await prisma.entry.create({
+      // Use clientLocalDate for createdAt/updatedAt if provided
+      const createdAt = clientLocalDate ? new Date(clientLocalDate) : new Date();
+      await prisma.entry.create({
         data: {
           id: entryId,
           authorId: user.id,
-          userResponse: "",
+          userResponse: "{}", // required, empty object
           userResponse2: cleanSummary,
-          summary: '{"title": "Started End of Day Draft"}',
-          isOpen: "partial_open",
-          journalEntry: [{}],
+          summary: summaryString,
+          sentiment: positivity,
+          isOpen: "partial",
+          createdAt,
+          updatedAt: createdAt,
+          journalEntry: [], // required, empty array
           journalEntry2: [
             {
-              timestamp: new Date().toISOString(),
+              timestamp: createdAt.toISOString(),
               text: journalText,
             },
           ],
+          tags: tags,
         },
       });
-      return { success: true, data: updated };
     } else {
-      const updated = await prisma.entry.update({
+      await prisma.entry.update({
         where: { id: entryId },
         data: {
-          journalEntry2: [
-            {
-              timestamp: new Date().toISOString(),
-              text: journalText,
-            },
-          ],
           userResponse2: cleanSummary,
-          isOpen: "partial_open",
+          summary: summaryString,
+          sentiment: positivity,
+          isOpen: "partial",
+          tags: tags,
         },
       });
-      return { success: true, data: updated };
     }
+    return { errorMessage: null };
   } catch (error) {
-    console.error("Follow-up error:", error);
-    return {
-      success: false,
-      message: error instanceof Error ? error.message : "Unknown error",
-    };
+    return handleError(error);
   }
 };
 
@@ -417,9 +414,21 @@ export const updateFollowUpEntryAction = async (
     const user = await getUser();
     if (!user) throw new Error("You must be logged in to update a note");
 
+    // Extract positivity score from summary
+    let positivity = 0;
+    let summaryString = summary;
+    try {
+      const parsedSummary = JSON.parse(summary);
+      if (typeof parsedSummary.positivity === 'number' && !isNaN(parsedSummary.positivity)) {
+        positivity = Math.max(0, Math.min(100, parsedSummary.positivity));
+      }
+      delete parsedSummary.positivity;
+      summaryString = JSON.stringify(parsedSummary);
+    } catch {}
+
     await prisma.entry.update({
       where: { id: entryId },
-      data: { userResponse2, summary, isOpen: "closed" },
+      data: { userResponse2, summary: summaryString, sentiment: positivity, isOpen: "closed" },
     });
 
     return { errorMessage: null };
@@ -551,6 +560,41 @@ export const AskAIAboutEntryAction = async (
   }
 };
 
+export const extractNegativePhrasesAction = async (journalText: string) => {
+  try {
+    // Use the same model and provider as other entry actions
+    const messages = [
+      {
+        role: "system",
+        content: `You are an assistant that helps users identify negative or self-critical sentences in their journal entries. Extract and return only the sentences that are negative, self-critical, or express negative emotions. Respond with a JSON array of the negative sentences. If there are none, return an empty array.`
+      },
+      {
+        role: "user",
+        content: journalText
+      }
+    ];
+    const out = await HfInference.chatCompletion({
+      model: "Qwen/Qwen3-32B",
+      provider: "cerebras",
+      messages,
+      max_tokens: 512,
+      temperature: 0.1,
+    });
+    const content = out.choices?.[0]?.message?.content || "[]";
+    // Log the full model response for debugging
+    console.log("[extractNegativePhrasesAction] model response:", content);
+    let negative: string[] = [];
+    try {
+      negative = JSON.parse(content);
+    } catch {
+      negative = [];
+    }
+    return { negative };
+  } catch (error) {
+    return { negative: [], error: error instanceof Error ? error.message : "Unknown error" };
+  }
+};
+
 type EntryObject = {
   [key: string]: string | undefined;
 };
@@ -580,13 +624,12 @@ export const AISummaryAction = async (entry: EntryObject, journal: string) => {
             Assume all responses to questions are related to the user's experiences. 
             Keep answers succinct and return a paragraph summary in second person, present tense looking to the future.
 
-            Return all information in the format of valid JSON. All summaries should have a title a summarization, and 3 relevant tags. It should in the format below:
-            
+            Return all information in the format of valid JSON. All summaries should have a title, a summarization, 3 relevant tags, and a positivity score out of 100. It should be in the format below:
             {
               "title": "Enter a Passage Title Here",
               "summary": "Enter your Summary Here",
               "tags": ["Tag1", "Tag2", "Tag3"],
-              "sentiment": 0.0
+              "positivity": 87 // a positivity score out of 100, where 100 is extremely positive and 0 is extremely negative
             }
 
             If the responses don't make sense return something about trying to set yourself up for success instead of just entering random answers.

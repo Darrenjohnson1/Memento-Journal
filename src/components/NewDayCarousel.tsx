@@ -1,15 +1,7 @@
 "use client";
 
 import React, { useEffect, useRef, useState } from "react";
-import {
-  Carousel,
-  CarouselApi,
-  CarouselContent,
-  CarouselItem,
-  CarouselNext,
-  CarouselPrevious,
-} from "@/components/ui/carousel";
-import { Card, CardContent } from "./ui/card";
+// Remove carousel imports
 import { Progress } from "./ui/progress";
 import { Textarea } from "./ui/textarea";
 import { Button } from "./ui/button";
@@ -35,72 +27,52 @@ export function NewDayCarousel({ entry }: any) {
     entry.userResponse,
   );
 
-  const [answers, setAnswers] = useState<string[]>(
-    Array(questions.length).fill(""),
-  );
+  const [answers, setAnswers] = useState<string[]>(Array(questions.length).fill(""));
   const [questionText, setQuestionText] = useState("");
   const [currentIndex, setCurrentIndex] = useState(0);
-  const [carouselApi, setCarouselApi] = useState<CarouselApi | null>(null);
+  const [thinking, setThinking] = useState(false);
   const { entryText, setEntryText } = useEntry();
   const router = useRouter();
 
-  const progress = ((currentIndex + 0) / questions.length) * 100;
+  const progress = ((currentIndex) / questions.length) * 100;
 
   useEffect(() => {
     setQuestionText(answers[currentIndex] || "");
   }, [currentIndex]);
 
-  const handleNext = () => {
-    setAnswers((prev) => {
-      const newAnswers = [...prev];
-      newAnswers[currentIndex] = questionText;
-      return newAnswers;
-    });
-    carouselApi?.scrollNext();
-    setCurrentIndex((prev) => Math.min(prev + 1, questions.length - 1));
-  };
-
-  const handlePrevious = () => {
-    setAnswers((prev) => {
-      const newAnswers = [...prev];
-      newAnswers[currentIndex] = questionText;
-      return newAnswers;
-    });
-    carouselApi?.scrollPrev();
-    setCurrentIndex((prev) => Math.max(prev - 1, 0));
-  };
-
   const handleSubmit = () => {
-    if (!questionText.trim()) return;
+    if (!questionText.trim() || thinking) return;
 
     // Create updated answers array with the current questionText
     const updatedAnswers = [...answers];
     updatedAnswers[currentIndex] = questionText;
-    setAnswers(updatedAnswers); // still set state as well
-
-    if (currentIndex < questions.length - 1) {
-      setCurrentIndex((prev) => prev + 1);
-      carouselApi?.scrollNext();
-    } else {
-      const questionsWithAnswers = Object.fromEntries(
-        questions.map((q, index) => [q.question, updatedAnswers[index]]),
-      );
-
-      AISummaryAction(questionsWithAnswers, entry.journalEntry).then(
-        (summary) => {
-          if (typeof summary === "string") {
-            updateEntryAction(entryIdParam, questionsWithAnswers, summary);
-          } else {
-            updateEntryAction(
-              entryIdParam,
-              questionsWithAnswers,
-              "Error summarizing entry.",
-            );
+    setAnswers(updatedAnswers);
+    setThinking(true);
+    setTimeout(() => {
+      setThinking(false);
+      if (currentIndex < questions.length - 1) {
+        setCurrentIndex((prev) => prev + 1);
+      } else {
+        const questionsWithAnswers = Object.fromEntries(
+          questions.map((q, index) => [q.question, updatedAnswers[index]])
+        );
+        AISummaryAction(questionsWithAnswers, entry.journalEntry).then(
+          (summary) => {
+            if (typeof summary === "string") {
+              updateEntryAction(entryIdParam, questionsWithAnswers, summary);
+            } else {
+              updateEntryAction(
+                entryIdParam,
+                questionsWithAnswers,
+                "Error summarizing entry."
+              );
+            }
+            router.push(`journal/?entryId=${entryIdParam}`);
           }
-          router.push(`journal/?entryId=${entryIdParam}`);
-        },
-      );
-    }
+        );
+      }
+      setQuestionText("");
+    }, 1000); // 1s thinking delay
   };
 
   const handleKeyDown = (e: React.KeyboardEvent<HTMLTextAreaElement>) => {
@@ -111,44 +83,40 @@ export function NewDayCarousel({ entry }: any) {
   };
 
   return (
-    <div className="w-full max-w-xs sm:max-w-sm mx-auto">
-      <Carousel
-        opts={{ watchDrag: false }}
-        setApi={setCarouselApi}
-        className="w-full"
-      >
-        <CarouselContent style={{ userSelect: "none" }}>
-          {questions.map((q, index) => (
-            <CarouselItem key={index}>
-              <div className="p-1">
-                <Card>
-                  <CardContent
-                    className="flex flex-col justify-center p-4 sm:p-6 min-h-[180px] sm:aspect-square"
-                  >
-                    <h1 className="pb-3 text-lg sm:text-2xl font-semibold">
-                      {index + 1}.
-                    </h1>
-                    <div className="break-words text-base sm:text-2xl font-semibold">
-                      {q.question}
-                    </div>
-                  </CardContent>
-                </Card>
+    <div className="w-full max-w-lg mx-auto flex flex-col gap-4">
+      <div className="flex flex-col gap-2 mt-6">
+        {/* Chat bubbles: alternate bot/user, same style but different alignment/colors */}
+        {/* Show all previous Q&A pairs */}
+        {answers.map((ans, idx) => (
+          idx < currentIndex && ans ? (
+            <React.Fragment key={idx}>
+              {/* Bot question bubble */}
+              <div className="self-start max-w-[80%] rounded-2xl bg-gray-100 px-5 py-3 text-gray-900 shadow mb-1">
+                {questions[idx].question}
               </div>
-            </CarouselItem>
-          ))}
-        </CarouselContent>
-
-        {/* Move buttons below */}
-        <div className="mt-4 flex justify-center gap-4">
-          <Button onClick={handlePrevious} />
-          <Button onClick={handleNext} />
-        </div>
-      </Carousel>
-
-      <Progress value={progress} className="mt-10" />
-
+              {/* User answer bubble */}
+              <div className="self-end max-w-[80%] rounded-2xl bg-primary text-white px-5 py-3 shadow mb-2">
+                {ans}
+              </div>
+            </React.Fragment>
+          ) : null
+        ))}
+        {/* Current question bubble (unless finished) */}
+        {currentIndex < questions.length && !thinking && (
+          <div className="self-start max-w-[80%] rounded-2xl bg-gray-100 px-5 py-3 text-gray-900 shadow mb-1">
+            {questions[currentIndex].question}
+          </div>
+        )}
+        {/* Thinking bubble */}
+        {thinking && (
+          <div className="self-start max-w-[60%] rounded-2xl bg-gray-200 px-5 py-3 text-gray-500 italic shadow mb-1 animate-pulse">
+            Thinking...
+          </div>
+        )}
+      </div>
+      {/* Chat input area */}
       <div
-        className="mt-10 flex cursor-text flex-col rounded-lg border p-4"
+        className="mt-4 flex cursor-text flex-col rounded-lg border p-4 bg-white"
         onClick={() => textareaRef.current?.focus()}
       >
         <Textarea
@@ -157,13 +125,15 @@ export function NewDayCarousel({ entry }: any) {
           value={questionText}
           onChange={(e) => setQuestionText(e.target.value)}
           onKeyDown={handleKeyDown}
-          className="placeholder:text-muted-foreground w-full resize-none rounded-none border-none bg-transparent p-0 shadow-none focus-visible:ring-0 focus-visible:ring-offset-0"
+          className="placeholder:text-muted-foreground w-full resize-none border-none bg-transparent p-0 shadow-none focus-visible:ring-0 focus-visible:ring-offset-0"
           style={{ minHeight: "3rem", lineHeight: "normal" }}
+          disabled={thinking}
         />
-        <Button className="ml-auto size-8 rounded-full" onClick={handleSubmit}>
+        <Button className="ml-auto size-8 rounded-full mt-2" onClick={handleSubmit} disabled={thinking}>
           <ArrowUpIcon className="text-background" />
         </Button>
       </div>
+      <Progress value={progress} className="mt-4" />
     </div>
   );
 }

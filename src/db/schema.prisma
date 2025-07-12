@@ -31,11 +31,15 @@ model Entry {
   userResponse Json
   userResponse2 Json?
   summary      String
+  sentiment    Float      @default(0)
   isOpen       EntryStatus
   author       User        @relation(fields: [authorId], references: [id])
   authorId     String
   createdAt    DateTime    @default(now())
   updatedAt    DateTime    @updatedAt @default(now())
+  negativePhrases Json?
+  tags           Json?
+  suggestedResponses Json?
 }
 
 enum Role {

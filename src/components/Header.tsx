@@ -15,10 +15,9 @@ const funnelDisplay = Funnel_Display({
   variable: "--font-funnel-display", // optional for Tailwind
 });
 
-function Header() {
+type HeaderProps = { user?: any };
+function Header({ user }: HeaderProps) {
   const pathname = usePathname();
-  // TODO: If you want user logic, pass user as a prop from the parent
-  const user = true; // Assume logged in for now, or pass as prop
   return (
     <header className="bg-popover relative flex h-24 w-full items-center justify-between border-b-1 px-3 sm:px-8">
       <Link

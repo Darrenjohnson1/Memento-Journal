@@ -13,9 +13,11 @@ import Link from "next/link";
 // import { Badge } from "./ui/badge";
 
 function sentimentToColor(sentiment: number): string {
-  if (sentiment > 0) return "#16a34a"; // green
-  if (sentiment < 0) return "#eab308"; // yellow
-  return "#a3a3a3"; // gray for neutral
+  if (sentiment >= 75) return "#16a34a"; // green for positive
+  return "#eab308"; // yellow for challenging
+}
+function sentimentType(sentiment: number): string {
+  return sentiment >= 75 ? "Positive" : "Challenging";
 }
 
 function AnimatedHourglass() {
@@ -126,14 +128,20 @@ function SelectEntryButton({ entry }: Props) {
               <span title="Ready for response">
                 <span role="img" aria-label="ready" className="bell-ring">🔔</span>
               </span>
-            ) : entry.isOpen === "closed" && entryObject.sentiment !== undefined ? (
-              <span
-                className="inline-block h-2 w-2 rounded-full"
-                style={{ backgroundColor: sentimentToColor(entryObject.sentiment) }}
-                title={`Sentiment: ${entryObject.sentiment}`}
-              />
             ) : null}
-            {entry.createdAt.toLocaleDateString("en-US", { year: "numeric", month: "short", day: "numeric" })}
+            <span>{entry.createdAt.toLocaleDateString("en-US", { year: "numeric", month: "short", day: "numeric" })}</span>
+            {entry.isOpen === "closed" && entry.sentiment !== undefined && (
+              <span className="flex items-center gap-1 ml-2 opacity-60">
+                <span
+                  className="inline-block h-2 w-2 rounded-full"
+                  style={{ backgroundColor: sentimentToColor(entry.sentiment), opacity: 0.7 }}
+                  title={`Positivity: ${entry.sentiment}`}
+                />
+                <span className="text-xs font-medium" style={{ color: sentimentToColor(entry.sentiment) }}>
+                  {sentimentType(entry.sentiment)}
+                </span>
+              </span>
+            )}
           </span>
         </div>
       </Link>

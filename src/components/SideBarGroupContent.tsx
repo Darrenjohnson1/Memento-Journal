@@ -17,6 +17,7 @@ import Fuse from "fuse.js";
 import SelectEntryButton from "./SelectEntryButton";
 import DeleteEntryButton from "./DeleteEntryButton";
 import { getDateOfISOWeek } from "@/lib/utils";
+import { isSameLocalDay } from "@/lib/utils";
 
 function getWeekDays(startDate: Date): Date[] {
   return Array.from({ length: 7 }).map((_, i) => {
@@ -56,7 +57,7 @@ function SideBarGroupContent({ entry }: Props) {
   // Map each day to its entry (if any)
   const entriesByDay = weekDays.map((date) => {
     const found = entry.find(
-      (e) => e && e.createdAt && isSameDay(new Date(e.createdAt), date)
+      (e) => e && e.createdAt && isSameLocalDay(new Date(e.createdAt), date)
     );
     return { date, entry: found };
   });
