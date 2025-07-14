@@ -1,12 +1,19 @@
 import { getUser } from "@/auth/server";
 import AskAIButton from "@/components/AskAIButton";
 import NewDayJournal from "@/components/NewDayJournal";
+import { Button } from "@/components/ui/button";
 import { Separator } from "@/components/ui/separator";
+import SurveyDialog from "@/components/ui/SurveyButton";
+import SurveyButton from "@/components/ui/SurveyButton";
 import WeeklyCalendar from "@/components/WeeklyCalendar";
 import { WeeklySentiment } from "@/components/WeeklySentiment";
 import prisma from "@/db/prisma";
 import { Entry } from "@prisma/client";
+<<<<<<< Updated upstream
 import { getDateOfISOWeek } from "@/lib/utils";
+=======
+import posthog from "posthog-js";
+>>>>>>> Stashed changes
 
 type Props = {
   searchParams: Promise<{ [key: string]: string | string[] | undefined }>;
@@ -107,7 +114,12 @@ async function Week({ searchParams, params }: Props) {
         user={user}
         entry={entryStringDates}
       />
+<<<<<<< Updated upstream
 
+=======
+      <NewDayJournal user={user} entry={entry} />
+      <SurveyDialog surveyId="0197e63c-99d9-0000-79fa-524951d93d6d" />
+>>>>>>> Stashed changes
       <Separator className="mt-5" />
 
       <div className="mt-6 w-full max-w-4xl">
@@ -129,6 +141,8 @@ async function Week({ searchParams, params }: Props) {
         </h3>
         <AskAIButton user={user} weekEntries={weekEntryStringDates} />
       </div>
+
+      <Button id="report">Report Feedback</Button>
     </div>
   );
 }
