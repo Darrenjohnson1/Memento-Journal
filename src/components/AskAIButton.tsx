@@ -131,7 +131,7 @@ function AskAIButton({ user, weekEntries }: Props) {
   return (
     <Drawer open={open} onOpenChange={handleOnOpenChange}>
       <DrawerTrigger asChild>
-        <Button>Ask ChatterBox</Button>
+        <Button className="w-full bg-black text-white rounded-xl py-4 text-lg font-semibold shadow hover:bg-gray-900 transition-colors">Ask ChatterBox</Button>
       </DrawerTrigger>
       <DrawerContent className="custom-scrollbar flex h-[85vh] max-w-4xl flex-col overflow-y-auto">
         <DrawerHeader>
@@ -153,14 +153,20 @@ function AskAIButton({ user, weekEntries }: Props) {
           </div>
           {questions.map((question, index) => (
             <Fragment key={index}>
-              <p className="response ml-auto max-w-[60%] rounded-md px-2 py-1 text-sm">
-                {question}
-              </p>
+              {/* User message bubble */}
+              <div className="flex w-full">
+                <span className="ml-auto max-w-[60%] rounded-lg px-4 py-2 text-sm bg-blue-100 text-blue-900 text-right shadow break-words whitespace-pre-line">
+                  {question}
+                </span>
+              </div>
+              {/* AI response bubble */}
               {responses[index] && (
-                <p
-                  className="bot-reponse question text-muted-foreground text-sm"
-                  dangerouslySetInnerHTML={{ __html: responses[index] }}
-                />
+                <div className="flex w-full">
+                  <span
+                    className="mr-auto max-w-[60%] rounded-lg px-4 py-2 text-sm bg-gray-100 text-gray-800 text-left shadow break-words whitespace-pre-line"
+                    dangerouslySetInnerHTML={{ __html: responses[index] }}
+                  />
+                </div>
               )}
             </Fragment>
           ))}

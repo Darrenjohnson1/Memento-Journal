@@ -9,11 +9,7 @@ import WeeklyCalendar from "@/components/WeeklyCalendar";
 import { WeeklySentiment } from "@/components/WeeklySentiment";
 import prisma from "@/db/prisma";
 import { Entry } from "@prisma/client";
-<<<<<<< Updated upstream
 import { getDateOfISOWeek } from "@/lib/utils";
-=======
-import posthog from "posthog-js";
->>>>>>> Stashed changes
 
 type Props = {
   searchParams: Promise<{ [key: string]: string | string[] | undefined }>;
@@ -87,10 +83,14 @@ async function Week({ searchParams, params }: Props) {
   }
 
   // Convert createdAt/updatedAt to string for WeeklyCalendar
-  const weekEntryStringDates = weekEntry.map(e => {
+  const weekEntryStringDates = weekEntry.map((e) => {
     if (!e) return e;
     let summaryObj = null;
-    try { summaryObj = e.summary ? JSON.parse(e.summary) : null; } catch { summaryObj = null; }
+    try {
+      summaryObj = e.summary ? JSON.parse(e.summary) : null;
+    } catch {
+      summaryObj = null;
+    }
     return {
       ...e,
       createdAt: e.createdAt.toISOString(),
@@ -98,12 +98,20 @@ async function Week({ searchParams, params }: Props) {
       summary: summaryObj,
     };
   });
-  const entryStringDates = entry ? {
-    ...entry,
-    createdAt: entry.createdAt.toISOString(),
-    updatedAt: entry.updatedAt.toISOString(),
-    summary: (() => { try { return entry.summary ? JSON.parse(entry.summary) : null; } catch { return null; } })(),
-  } : entry;
+  const entryStringDates = entry
+    ? {
+        ...entry,
+        createdAt: entry.createdAt.toISOString(),
+        updatedAt: entry.updatedAt.toISOString(),
+        summary: (() => {
+          try {
+            return entry.summary ? JSON.parse(entry.summary) : null;
+          } catch {
+            return null;
+          }
+        })(),
+      }
+    : entry;
 
   return (
     <div className="flex h-full flex-col items-center gap-4">
@@ -114,12 +122,6 @@ async function Week({ searchParams, params }: Props) {
         user={user}
         entry={entryStringDates}
       />
-<<<<<<< Updated upstream
-
-=======
-      <NewDayJournal user={user} entry={entry} />
-      <SurveyDialog surveyId="0197e63c-99d9-0000-79fa-524951d93d6d" />
->>>>>>> Stashed changes
       <Separator className="mt-5" />
 
       <div className="mt-6 w-full max-w-4xl">

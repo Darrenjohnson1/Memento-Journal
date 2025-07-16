@@ -55,7 +55,7 @@ function Header({ user }: HeaderProps) {
       </Link>
       <div className="flex gap-4">
         {user ? (
-          (pathname === "/plan" || pathname === "/follow-up") ? (
+          (pathname === "/plan" || pathname === "/follow-up" || pathname === "/journal") ? (
             <Button asChild variant="outline">
               <Link href="/">Back to Home</Link>
             </Button>

@@ -54,6 +54,10 @@ function formatFullDate(date: Date) {
 function CustomTooltip({ active, payload }: TooltipProps<any, any>) {
   if (active && payload && payload.length > 0) {
     const data = payload[0].payload;
+    const versionText = data.version === 'original' ? 'Original' : 
+                       data.version === 'reframed' ? 'Reframed' : 
+                       data.version === 'current' ? 'Current' : 
+                       data.version || 'Unknown';
     return (
       <div className="max-w-xs rounded-md border bg-white p-3 text-sm shadow-md">
         <p className="font-medium">{formatFullDate(data.date)}</p>
@@ -62,6 +66,12 @@ function CustomTooltip({ active, payload }: TooltipProps<any, any>) {
         </p>
         <p className="mt-2 font-semibold text-pink-600">
           Positivity Score: {data.sentiment.toFixed(1)}
+        </p>
+        <p className="text-xs text-gray-500 mt-1">
+          Version: {versionText}
+        </p>
+        <p className="text-xs text-gray-400">
+          {new Date(data.timestamp).toLocaleTimeString()}
         </p>
       </div>
     );
@@ -91,20 +101,52 @@ function getISOWeek(date: Date) {
 }
 
 export function WeeklySentiment({ entry }: Props) {
-  // Transform each entry
+  // Transform each entry to include sentiment history
   const chartDataAll = entry
-    .map(({ createdAt, summary, sentiment }) => {
+    .flatMap(({ createdAt, summary, sentiment, sentimentHistory }) => {
       try {
         const summaryObj = JSON.parse(summary);
-        if (typeof sentiment !== 'number' || isNaN(sentiment)) return null;
-        return {
-          day: formatDate(createdAt),
-          date: new Date(createdAt),
-          sentiment: sentiment, // 0-100
-          summary: summaryObj.summary || "",
-        };
+        const baseDate = new Date(createdAt);
+        
+        // Use sentiment history for all data points
+        const dataPoints = [];
+        
+        console.log('Processing entry:', { createdAt, sentiment, sentimentHistory });
+        
+        if (sentimentHistory && Array.isArray(sentimentHistory)) {
+          console.log('Found sentiment history:', sentimentHistory);
+          // Use all sentiment history points
+          sentimentHistory.forEach((historyItem: any) => {
+            console.log('Processing history item:', historyItem);
+            if (historyItem && typeof historyItem.score === 'number' && !isNaN(historyItem.score)) {
+              dataPoints.push({
+                day: formatDate(String(historyItem.timestamp || createdAt)),
+                date: new Date(historyItem.timestamp || createdAt),
+                sentiment: historyItem.score,
+                summary: summaryObj.summary || "",
+                version: historyItem.version || 'unknown',
+                timestamp: historyItem.timestamp || createdAt,
+              });
+            }
+          });
+        } else if (typeof sentiment === 'number' && !isNaN(sentiment)) {
+          console.log('Using fallback sentiment:', sentiment);
+          // Fallback to current sentiment if no history exists
+          dataPoints.push({
+            day: formatDate(createdAt),
+            date: baseDate,
+            sentiment: sentiment,
+            summary: summaryObj.summary || "",
+            version: 'current',
+            timestamp: createdAt,
+          });
+        }
+        
+        console.log('Generated data points:', dataPoints);
+        
+        return dataPoints;
       } catch {
-        return null;
+        return [];
       }
     })
     .filter(Boolean)
@@ -162,20 +204,56 @@ export function WeeklySentiment({ entry }: Props) {
     return d;
   });
 
-  // Map each day to an entry or a placeholder
-  const chartDataFull = weekDays.map((date) => {
-    const found = chartData.find(d =>
-      d.date.getUTCFullYear() === date.getUTCFullYear() &&
-      d.date.getUTCMonth() === date.getUTCMonth() &&
-      d.date.getUTCDate() === date.getUTCDate()
-    );
-    return found || {
-      day: date.toLocaleDateString(undefined, { month: "short", day: "numeric" }),
-      date,
-      sentiment: 0,
-      summary: "No entry",
-    };
+  // Create separate data points for each sentiment score on the same day
+  const chartDataFull = [];
+  
+  // Group all sentiment data by day
+  const sentimentByDay: Record<string, any[]> = {};
+  chartData.forEach((dataPoint) => {
+    const dayKey = dataPoint.date.toISOString().split('T')[0]; // YYYY-MM-DD
+    if (!sentimentByDay[dayKey]) {
+      sentimentByDay[dayKey] = [];
+    }
+    sentimentByDay[dayKey].push(dataPoint);
   });
+  
+  // Create data points for each day
+  weekDays.forEach((date) => {
+    const dayKey = date.toISOString().split('T')[0];
+    const daySentiments = sentimentByDay[dayKey] || [];
+    
+    if (daySentiments.length === 0) {
+      // No sentiments for this day
+      chartDataFull.push({
+        day: date.toLocaleDateString(undefined, { month: "short", day: "numeric" }),
+        date,
+        sentiment: 0,
+        summary: "No entry",
+      });
+    } else {
+              // Create a separate data point for each sentiment on this day
+        daySentiments.forEach((sentiment, index) => {
+          const sentimentDate = new Date(sentiment.timestamp || date);
+          // Add time to the day label to distinguish multiple points on same day
+          const timeString = sentimentDate.toLocaleTimeString(undefined, { 
+            hour: '2-digit', 
+            minute: '2-digit',
+            hour12: false 
+          });
+          chartDataFull.push({
+            day: `${date.toLocaleDateString(undefined, { month: "short", day: "numeric" })} ${timeString}`,
+            date: sentimentDate,
+            sentiment: sentiment.sentiment,
+            summary: sentiment.summary,
+            version: sentiment.version,
+            timestamp: sentiment.timestamp,
+          });
+        });
+    }
+  });
+  
+  // Sort by date
+  chartDataFull.sort((a, b) => a.date.getTime() - b.date.getTime());
 
   console.log('WeeklySentiment chartDataFull:', chartDataFull);
 

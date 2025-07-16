@@ -1,11 +1,11 @@
 "use client";
-import React, { Fragment, useEffect, useState, useRef } from "react";
+import React, { useEffect, useState, useRef } from "react";
 import { Badge } from "./ui/badge";
 import { Separator } from "./ui/separator";
 import NewDayJournal from "./NewDayJournal";
 import PartialDayJournal from "./PartialDayJournal";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "./ui/card";
-import { extractNegativePhrasesAction } from "@/actions/entry";
+import { extractNegativePhrasesAction, updateJournalEntryAction } from "@/actions/entry";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { Progress } from "@/components/ui/progress";
 // Placeholder for the AI rewrite action (to be implemented in backend)
@@ -33,6 +33,12 @@ type Props = {
     createdAt?: Date;
     updatedAt?: Date;
     negativePhrases?: string[];
+    suggestedResponses?: any;
+    sentimentHistory?: Array<{
+      score: number;
+      timestamp: string;
+      version: string;
+    }>;
   } | null;
 };
 // Use the same sentiment color/type logic as WeeklyCalendar
@@ -63,6 +69,9 @@ function JournalEntry({ entry }: Props) {
   const [improvedText, setImprovedText] = useState<string | null>(null);
   const [improving, setImproving] = useState(false);
   const [improveError, setImproveError] = useState<string | null>(null);
+  const [saving, setSaving] = useState(false);
+  const [saveError, setSaveError] = useState<string | null>(null);
+  const [saveSuccess, setSaveSuccess] = useState(false);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
   const overlayRef = useRef<HTMLDivElement>(null);
   // State for user rewrites for each negative phrase
@@ -76,10 +85,83 @@ function JournalEntry({ entry }: Props) {
     setUserRewrites((prev) => ({ ...prev, [idx]: value }));
   };
 
-  const handleSaveAllRewrites = () => {
-    // TODO: Implement backend update logic
-    // For now, just log the rewrites
-    console.log('User rewrites:', userRewrites);
+  const handleSaveAllRewrites = async () => {
+    if (!entry?.id) {
+      setSaveError("Entry ID not found");
+      return;
+    }
+
+    setSaving(true);
+    setSaveError(null);
+    setSaveSuccess(false);
+
+    try {
+      // Get the original journal text
+      const originalText = entry?.journalEntry?.[0]?.text || entry?.journalEntry2?.[0]?.text || "";
+      
+      // Apply all user rewrites to create the improved text
+      let improvedText = originalText;
+      
+      // Sort rewrites by index to apply them in order
+      const sortedRewrites = Object.entries(userRewrites)
+        .sort(([a], [b]) => parseInt(a) - parseInt(b))
+        .reverse(); // Apply from end to beginning to avoid index shifting
+      
+      sortedRewrites.forEach(([idxStr, newText]) => {
+        const idx = parseInt(idxStr);
+        if (idx >= 0 && idx < negativePhrases.length && newText.trim()) {
+          const originalPhrase = negativePhrases[idx].negative;
+          const safePhrase = originalPhrase.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+          improvedText = improvedText.replace(new RegExp(safePhrase, 'gi'), newText);
+        }
+      });
+
+      // Call the backend to update the entry
+      const result = await updateJournalEntryAction(entry.id, improvedText);
+      
+      if (result.success) {
+        setSaveSuccess(true);
+        // Update local state with new data
+        if (result.newPositivity !== undefined) {
+          entry.sentiment = result.newPositivity;
+        }
+        if (result.sentimentHistory) {
+          entry.suggestedResponses = result.sentimentHistory;
+        }
+        if (result.newSummary) {
+          entry.summary = JSON.stringify(result.newSummary);
+          setParsedEntry(result.newSummary);
+        }
+        if (result.newTags) {
+          entry.tags = result.newTags;
+        }
+        if (result.newNegativePhrases) {
+          entry.negativePhrases = result.newNegativePhrases;
+          setNegativePhrases(result.newNegativePhrases);
+        }
+        // Update the journal text
+        if (entry.journalEntry && entry.journalEntry.length > 0) {
+          entry.journalEntry[0].text = improvedText;
+        } else if (entry.journalEntry2 && entry.journalEntry2.length > 0) {
+          entry.journalEntry2[0].text = improvedText;
+        }
+        
+        // Close the improve section
+        setShowImprove(false);
+        setUserRewrites({});
+        setCurrentPhraseIdx(0);
+        
+        // Show success message briefly
+        setTimeout(() => setSaveSuccess(false), 3000);
+      } else {
+        setSaveError(result.message || "Failed to save changes");
+      }
+    } catch (error) {
+      setSaveError("An unexpected error occurred");
+      console.error("Error saving rewrites:", error);
+    } finally {
+      setSaving(false);
+    }
   };
 
   useEffect(() => {
@@ -248,6 +330,30 @@ function JournalEntry({ entry }: Props) {
             </span>
           </div>
         )}
+        
+        {/* Sentiment History */}
+        {entry?.suggestedResponses && Array.isArray(entry.suggestedResponses) && entry.suggestedResponses.length > 1 && (
+          <div className="mt-3">
+            <div className="text-xs text-gray-500 mb-1">Positivity History:</div>
+            <div className="flex gap-1">
+              {entry.suggestedResponses.map((historyItem: any, index: number) => (
+                <div
+                  key={index}
+                  className="flex flex-col items-center"
+                  title={`${historyItem.version}: ${historyItem.score} (${new Date(historyItem.timestamp).toLocaleTimeString()})`}
+                >
+                  <div
+                    className="w-2 h-8 rounded-sm"
+                    style={{ backgroundColor: sentimentToColor(historyItem.score) }}
+                  />
+                  <span className="text-xs text-gray-400 mt-1">
+                    {historyItem.version === 'original' ? 'O' : 'R'}
+                  </span>
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
         {/* Display only tags from entry.tags column */}
         {entryTags.length > 0 && (
           <div className="mt-4">
@@ -332,10 +438,12 @@ function JournalEntry({ entry }: Props) {
                       </div>
                       {/* Single negative phrase tabs */}
                       <Tabs defaultValue="suggestion" className="w-full">
-                        <TabsList>
-                          <TabsTrigger value="suggestion">Suggestion</TabsTrigger>
-                          <TabsTrigger value="rewrite">Your Rewrite</TabsTrigger>
-                        </TabsList>
+                        <div className="flex justify-center w-full">
+                          <TabsList>
+                            <TabsTrigger value="suggestion">Suggestion</TabsTrigger>
+                            <TabsTrigger value="rewrite">Your Rewrite</TabsTrigger>
+                          </TabsList>
+                        </div>
                         <TabsContent value="suggestion">
                           <div>
                             <span className="block text-xs text-gray-500 mb-1">Original</span>
@@ -372,12 +480,21 @@ function JournalEntry({ entry }: Props) {
                   ) : <p className="text-green-700">No negative phrasing detected!</p>}
                 </div>
                 {negativePhrases.length > 0 && (
-                  <button
-                    className="mt-4 px-4 py-2 bg-green-600 text-white rounded hover:bg-green-700"
-                    onClick={handleSaveAllRewrites}
-                  >
-                    Save All
-                  </button>
+                  <div className="mt-4 space-y-2">
+                    <button
+                      className="px-4 py-2 bg-green-600 text-white rounded hover:bg-green-700 disabled:opacity-50 disabled:cursor-not-allowed"
+                      onClick={handleSaveAllRewrites}
+                      disabled={saving}
+                    >
+                      {saving ? "Saving..." : "Save All"}
+                    </button>
+                    {saveError && (
+                      <p className="text-red-600 text-sm">{saveError}</p>
+                    )}
+                    {saveSuccess && (
+                      <p className="text-green-600 text-sm">✓ Changes saved successfully!</p>
+                    )}
+                  </div>
                 )}
               </div>
             )}
@@ -398,7 +515,7 @@ function JournalEntry({ entry }: Props) {
         const validPairs1 = getValidPairs(entry?.userResponse);
         const validPairs2 = getValidPairs(entry?.userResponse2);
         const hasValidResponses = validPairs1.length > 0 || validPairs2.length > 0;
-        if (!hasValidResponses) return <></>;
+        if (!hasValidResponses) return null;
         return (
           <div className="my-16">
             <h2 className="mb-7 text-3xl font-bold">Mindfulness Insights</h2>

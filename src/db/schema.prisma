@@ -32,6 +32,7 @@ model Entry {
   userResponse2 Json?
   summary      String
   sentiment    Float      @default(0)
+  sentimentHistory Json?
   isOpen       EntryStatus
   author       User        @relation(fields: [authorId], references: [id])
   authorId     String

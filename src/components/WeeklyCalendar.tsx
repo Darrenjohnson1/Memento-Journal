@@ -192,36 +192,37 @@ export default function WeeklyCalendar({
 
   return (
     <>
-      {/* Back to this week button sits above the card */}
-      {!isCurrentWeek && (
-        <Button
-          variant="secondary"
-          className="w-full py-3 rounded-b-none rounded-t-lg text-base font-semibold mb-0 max-w-4xl mx-auto"
-          onClick={() => router.push(`/${currentYear}/week/${currentWeek}`)}
-        >
-          Back to Current Week
-        </Button>
-      )}
-      <div className="bg-background flex flex-col rounded-lg border px-4 py-2 w-full max-w-4xl mx-auto">
-        {/* Week selector and navigation at the top */}
-        <div className="mb-4 flex flex-col items-center justify-between gap-1">
-          <div className="flex w-full items-center justify-between">
-            <Button variant="ghost" size="icon" onClick={goToPreviousWeek}>
-              <ChevronLeft className="h-5 w-5" />
-            </Button>
-
-            <div className="text-foreground text-center text-sm font-medium">
+      {/* Week selector and navigation above the card */}
+      <div className="w-full max-w-4xl mx-auto mb-2">
+        <div className="bg-gray-200 px-6 py-4 rounded-2xl shadow-sm">
+          <div className="flex items-center justify-between w-full gap-12">
+            {/* Previous chevron */}
+            <button className="p-2 rounded-full hover:bg-gray-300" aria-label="Previous week" onClick={goToPreviousWeek}>
+              <ChevronLeft className="w-7 h-7 text-black" />
+            </button>
+            <div className="text-foreground text-center text-2xl font-medium min-w-[220px]">
               Week {initialWeek} / {totalWeeks} — {initialYear}
+              <div className="text-xs text-muted-foreground mt-1">{formatWeekRange(weekStart, weekEnd)}</div>
             </div>
-
-            <Button variant="ghost" size="icon" onClick={goToNextWeek}>
-              <ChevronRight className="h-5 w-5" />
-            </Button>
-          </div>
-          <div className="text-xs text-muted-foreground">
-            {formatWeekRange(weekStart, weekEnd)}
+            <button className="p-2 rounded-full hover:bg-gray-300" aria-label="Next week" onClick={goToNextWeek}>
+              <ChevronRight className="w-7 h-7 text-black" />
+            </button>
           </div>
         </div>
+        {/* Back to this week button in a touching banner below nav */}
+        {!isCurrentWeek && (
+          <div className="bg-gray-100 rounded-xl -mt-1 flex justify-center">
+            <Button
+              variant="secondary"
+              className="w-full py-3 rounded-none text-base font-semibold max-w-4xl mx-auto border-0 shadow-none"
+              onClick={() => router.push(`/${currentYear}/week/${currentWeek}`)}
+            >
+              Back to Current Week
+            </Button>
+          </div>
+        )}
+      </div>
+      <div className="bg-background flex flex-col rounded-lg border px-4 py-2 w-full max-w-4xl mx-auto">
 
         {/* New Day entry component or weekly wrap up placeholder */}
         {isCurrentWeek ? (
@@ -388,11 +389,11 @@ export default function WeeklyCalendar({
           })}
         </div>
 
-        {/* Positivity score bar below the calendar grid */}
-        <div className="w-full max-w-4xl mx-auto mt-4">
-          <div className="w-full py-3 rounded-t-none rounded-b-lg text-base font-semibold bg-secondary text-secondary-foreground text-center">
-            {weekSentiments.length > 0 ? `Positivity Score: ${weekSentimentTotal.toFixed(1)}` : 'Positivity Score: N/A'}
-          </div>
+        {/* Weekly positivity score below the card */}
+        <div className="w-full max-w-4xl mx-auto mt-2 flex justify-center">
+          <span className="inline-block rounded-full bg-green-100 text-green-800 px-4 py-2 text-base font-semibold shadow">
+            Weekly Positivity Score: {weekSentimentTotal ? Math.round(weekSentimentTotal) : 0}
+          </span>
         </div>
       </div>
     </>

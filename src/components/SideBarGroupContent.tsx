@@ -66,21 +66,40 @@ function SideBarGroupContent({ entry }: Props) {
     <SidebarGroupContentShadCN>
       <div className="grid gap-1 text-center w-full min-w-0">
         {entriesByDay.map(({ date, entry }) => (
-          <div key={date.toISOString()} className="flex flex-col items-start gap-1 w-full min-w-0 mt-2">
-            <span className="text-muted-foreground text-xs">
-              {formatDayName(date)}
-            </span>
-            {entry ? (
-              <div className="flex flex-row items-center gap-1 w-full">
-                <SelectEntryButton entry={entry} />
-                <DeleteEntryButton entryId={entry.id} deleteEntryLocally={() => {}} />
+          (() => {
+            const now = new Date();
+            const isToday =
+              date.getFullYear() === now.getFullYear() &&
+              date.getMonth() === now.getMonth() &&
+              date.getDate() === now.getDate();
+            let border = "";
+            if (isToday && entry) {
+              if (entry.isOpen === "partial") {
+                border = "border-yellow-400 border-2";
+              } else if (entry.isOpen === "open" || entry.isOpen === "partial_open") {
+                border = "border-green-500 border-2";
+              } else if (entry.isOpen === "closed") {
+                border = "border-red-500 border-2";
+              }
+            }
+            return (
+              <div key={date.toISOString()} className={`flex flex-col items-start gap-1 w-full min-w-0 mt-2 rounded-lg`}>
+                <span className="text-muted-foreground text-xs">
+                  {formatDayName(date)}
+                </span>
+                {entry ? (
+                  <div className={`flex flex-row items-center gap-1 w-full rounded-lg ${border} ${isToday && entry ? 'p-0.5' : ''}`}>
+                    <SelectEntryButton entry={entry} />
+                    <DeleteEntryButton entryId={entry.id} deleteEntryLocally={() => {}} />
+                  </div>
+                ) : (
+                  <span className="h-6 w-full rounded bg-muted opacity-40 border border-dashed border-gray-400 flex items-center justify-center text-xs text-gray-400 p-0">
+                    –
+                  </span>
+                )}
               </div>
-            ) : (
-              <span className="h-6 w-full rounded bg-muted opacity-40 border border-dashed border-gray-400 flex items-center justify-center text-xs text-gray-400 p-0">
-                –
-              </span>
-            )}
-          </div>
+            );
+          })()
         ))}
       </div>
     </SidebarGroupContentShadCN>

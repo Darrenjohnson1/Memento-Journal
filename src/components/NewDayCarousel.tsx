@@ -10,6 +10,7 @@ import useEntry from "@/hooks/useEntry";
 import { AISummaryAction, updateEntryAction } from "@/actions/entry";
 import { useRouter, useSearchParams } from "next/navigation";
 import JournalEntry from "./JournalEntry";
+import { Card, CardHeader, CardTitle, CardDescription, CardContent } from "./ui/card";
 
 export function NewDayCarousel({ entry }: any) {
   if (!entry || !entry.userResponse) {
@@ -83,40 +84,46 @@ export function NewDayCarousel({ entry }: any) {
   };
 
   return (
-    <div className="w-full max-w-lg mx-auto flex flex-col gap-4">
-      <div className="flex flex-col gap-2 mt-6">
+    <Card className="mx-auto w-full max-w-xl flex flex-col h-[600px]">
+      <CardHeader className="text-center">
+        <CardTitle className="text-2xl">Plan Your Day</CardTitle>
+        <CardDescription className="text-xl">Answer a few questions to help plan your day. Your responses will guide your journal and insights.</CardDescription>
+      </CardHeader>
+      <CardContent className="flex flex-col flex-1 gap-6 overflow-auto pb-32">
         {/* Chat bubbles: alternate bot/user, same style but different alignment/colors */}
-        {/* Show all previous Q&A pairs */}
-        {answers.map((ans, idx) => (
-          idx < currentIndex && ans ? (
-            <React.Fragment key={idx}>
-              {/* Bot question bubble */}
-              <div className="self-start max-w-[80%] rounded-2xl bg-gray-100 px-5 py-3 text-gray-900 shadow mb-1">
-                {questions[idx].question}
-              </div>
-              {/* User answer bubble */}
-              <div className="self-end max-w-[80%] rounded-2xl bg-primary text-white px-5 py-3 shadow mb-2">
-                {ans}
-              </div>
-            </React.Fragment>
-          ) : null
-        ))}
-        {/* Current question bubble (unless finished) */}
-        {currentIndex < questions.length && !thinking && (
-          <div className="self-start max-w-[80%] rounded-2xl bg-gray-100 px-5 py-3 text-gray-900 shadow mb-1">
-            {questions[currentIndex].question}
-          </div>
-        )}
-        {/* Thinking bubble */}
-        {thinking && (
-          <div className="self-start max-w-[60%] rounded-2xl bg-gray-200 px-5 py-3 text-gray-500 italic shadow mb-1 animate-pulse">
-            Thinking...
-          </div>
-        )}
-      </div>
-      {/* Chat input area */}
+        <div className="flex flex-col gap-2 mt-2">
+          {answers.map((ans, idx) => (
+            idx < currentIndex && ans ? (
+              <React.Fragment key={idx}>
+                {/* Bot question bubble */}
+                <div className="self-start max-w-[60%] rounded-lg px-4 py-2 text-sm break-words bg-gray-100 text-gray-700 mr-auto mb-1 shadow">
+                  {questions[idx].question}
+                </div>
+                {/* User answer bubble */}
+                <div className="self-end max-w-[60%] rounded-lg px-4 py-2 text-sm break-words bg-blue-100 text-blue-900 ml-auto mb-2 shadow">
+                  {ans}
+                </div>
+              </React.Fragment>
+            ) : null
+          ))}
+          {/* Current question bubble (unless finished) */}
+          {currentIndex < questions.length && (
+            <div className="self-start max-w-[60%] rounded-lg px-4 py-2 text-sm break-words bg-gray-100 text-gray-700 mr-auto mb-1 shadow">
+              {questions[currentIndex].question}
+            </div>
+          )}
+          {/* Thinking bubble */}
+          {thinking && (
+            <div className="self-start max-w-[60%] animate-pulse rounded-lg bg-gray-200 px-4 py-2 text-sm text-gray-600 mr-auto mb-1 shadow">
+              Thinking...
+            </div>
+          )}
+        </div>
+      </CardContent>
+      {/* Input area at the bottom, sticky/fixed */}
       <div
-        className="mt-4 flex cursor-text flex-col rounded-lg border p-4 bg-white"
+        className="fixed bottom-0 left-0 w-full max-w-xl mx-auto flex cursor-text flex-col rounded-t-lg border-t bg-background p-4 z-50"
+        style={{ right: 0 }}
         onClick={() => textareaRef.current?.focus()}
       >
         <Textarea
@@ -125,7 +132,7 @@ export function NewDayCarousel({ entry }: any) {
           value={questionText}
           onChange={(e) => setQuestionText(e.target.value)}
           onKeyDown={handleKeyDown}
-          className="placeholder:text-muted-foreground w-full resize-none border-none bg-transparent p-0 shadow-none focus-visible:ring-0 focus-visible:ring-offset-0"
+          className="placeholder:text-muted-foreground resize-none rounded-none border-none bg-transparent p-0 shadow-none focus-visible:ring-0 focus-visible:ring-offset-0"
           style={{ minHeight: "3rem", lineHeight: "normal" }}
           disabled={thinking}
         />
@@ -133,8 +140,11 @@ export function NewDayCarousel({ entry }: any) {
           <ArrowUpIcon className="text-background" />
         </Button>
       </div>
-      <Progress value={progress} className="mt-4" />
-    </div>
+      {/* Progress bar at the very bottom of the card */}
+      <div className="w-full px-4 pb-2">
+        <Progress value={progress} className="mt-2" />
+      </div>
+    </Card>
   );
 }
 

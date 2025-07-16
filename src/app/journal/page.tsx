@@ -9,6 +9,8 @@ import FollowUpButton from "@/components/FollowUpButton";
 import { ArrowLeft } from "lucide-react";
 import BackButton from "@/components/BackButton";
 import JournalDeleteButton from "@/components/JournalDeleteButton";
+import Link from "next/link";
+import { ChevronLeft, ChevronRight } from "lucide-react";
 
 // ISO week calculation
 function getISOWeek(date: Date) {
@@ -28,6 +30,8 @@ async function page({ searchParams }: Props) {
     : entryIdParam || "";
 
   let entry: any;
+  let prevEntry: any = null;
+  let nextEntry: any = null;
 
   if (user) {
     entry = await prisma.entry.findFirst({
@@ -51,49 +55,85 @@ async function page({ searchParams }: Props) {
         negativePhrases: true,
       },
     });
+    if (entry) {
+      // Previous entry (earlier date)
+      prevEntry = await prisma.entry.findFirst({
+        where: {
+          authorId: user.id,
+          createdAt: { lt: entry.createdAt },
+        },
+        orderBy: { createdAt: "desc" },
+        select: { id: true },
+      });
+      // Next entry (later date)
+      nextEntry = await prisma.entry.findFirst({
+        where: {
+          authorId: user.id,
+          createdAt: { gt: entry.createdAt },
+        },
+        orderBy: { createdAt: "asc" },
+        select: { id: true },
+      });
+    }
   }
 
   // Remove week/year logic
 
   return (
     <>
-      <Header user={user} />
-      <div className="w-full max-w-4xl mx-auto">
-        <div className="bg-gray-200 flex items-center justify-between px-6 py-4 rounded-b-2xl shadow-sm">
-          <div className="flex items-center gap-2">
-            <BackButton />
-          </div>
-          <div className="text-right w-full">
-            <h1 className="text-3xl font-medium">
-              {entry?.createdAt.toLocaleString("en-US", {
-                year: "numeric",
-                month: "long",
-                day: "numeric",
-              })}
-            </h1>
+      <div className="relative">
+        <Header user={user} />
+        <div className="w-full max-w-4xl mx-auto">
+          <div className="bg-gray-200 px-6 py-4 rounded-b-2xl shadow-sm">
+            <div className="flex items-center justify-between w-full gap-12">
+              {/* Previous chevron */}
+              {prevEntry ? (
+                <Link href={`/journal/?entryId=${prevEntry.id}`}>
+                  <button className="p-2 rounded-full hover:bg-gray-300" aria-label="Previous entry">
+                    <ChevronLeft className="w-7 h-7 text-black" />
+                  </button>
+                </Link>
+              ) : <div className="w-9 h-9" />} {/* Reserve space if no button */}
+              <h1 className="text-3xl font-medium text-center min-w-[220px]">
+                {entry?.createdAt.toLocaleString("en-US", {
+                  year: "numeric",
+                  month: "long",
+                  day: "numeric",
+                })}
+              </h1>
+              {/* Next chevron */}
+              {nextEntry ? (
+                <Link href={`/journal/?entryId=${nextEntry.id}`}>
+                  <button className="p-2 rounded-full hover:bg-gray-300" aria-label="Next entry">
+                    <ChevronRight className="w-7 h-7 text-black" />
+                  </button>
+                </Link>
+              ) : <div className="w-9 h-9" />} {/* Reserve space if no button */}
+            </div>
           </div>
         </div>
-      </div>
-      <div className="flex h-full flex-col items-center gap-8 pt-8 pb-16 bg-background min-h-screen">
-        <div className="flex w-full max-w-4xl flex-col justify-center gap-6 px-4">
-          <JournalEntry entry={entry} />
+        
+        <div className="flex h-full flex-col items-center gap-8 pt-8 pb-16 bg-background min-h-screen">
+          <div className="flex w-full max-w-4xl flex-col justify-center gap-6 px-4">
+            <JournalEntry entry={entry} />
+          </div>
+          {entry.append ? (
+            <div className="bg-popover relative flex h-24 w-full max-w-4xl flex-col items-center justify-center border-b-1">
+              {/* <FollowUpButton /> */}
+            </div>
+          ) : (
+            <div className="bg-popover relative flex h-24 w-full max-w-4xl flex-col items-center justify-center gap-5 border-b-1">
+              <p className="mt-5 text-lg"></p>
+              {entry.append}
+              {/* <FollowUpButton /> */}
+            </div>
+          )}
+          {entry && (
+            <div className="flex w-full max-w-4xl justify-center mt-12 px-4">
+              <JournalDeleteButton entryId={entry.id} />
+            </div>
+          )}
         </div>
-        {entry.append ? (
-          <div className="bg-popover relative flex h-24 w-full max-w-4xl flex-col items-center justify-center border-b-1">
-            {/* <FollowUpButton /> */}
-          </div>
-        ) : (
-          <div className="bg-popover relative flex h-24 w-full max-w-4xl flex-col items-center justify-center gap-5 border-b-1">
-            <p className="mt-5 text-lg"></p>
-            {entry.append}
-            {/* <FollowUpButton /> */}
-          </div>
-        )}
-        {entry && (
-          <div className="flex w-full max-w-4xl justify-center mt-12 px-4">
-            <JournalDeleteButton entryId={entry.id} />
-          </div>
-        )}
       </div>
     </>
   );

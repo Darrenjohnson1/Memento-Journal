@@ -29,6 +29,15 @@ function AppSideBar({ user, entries }: AppSideBarProps) {
   // Find entry states
   const hasDraftEntry = entries.find(e => e.isOpen === "open" || e.isOpen === "partial_open")?.isOpen || "";
   const hasPartialEntry = entries.find(e => e.isOpen === "partial")?.isOpen || "";
+  // Find the most recent entry
+  const mostRecentEntry = entries.length > 0 ? [...entries].sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime())[0] : null;
+  // Determine border color by status
+  let borderColor = "border-gray-300";
+  if (mostRecentEntry) {
+    if (mostRecentEntry.isOpen === "open" || mostRecentEntry.isOpen === "partial_open") borderColor = "border-green-500";
+    else if (mostRecentEntry.isOpen === "partial") borderColor = "border-yellow-500";
+    else if (mostRecentEntry.isOpen === "closed") borderColor = "border-red-500";
+  }
 
   return (
     <Sidebar side="right" variant="floating">

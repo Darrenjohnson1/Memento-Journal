@@ -656,3 +656,133 @@ export const AISummaryAction = async (entry: EntryObject, journal: string) => {
     return handleError(error);
   }
 };
+
+export const updateJournalEntryAction = async (
+  entryId: string,
+  newJournalText: string,
+) => {
+  try {
+    const user = await getUser();
+    if (!user) throw new Error("You must be logged in to update a journal entry");
+
+    // Get the existing entry to preserve other data
+    const existingEntry = await prisma.entry.findUnique({
+      where: { id: entryId, authorId: user.id },
+    });
+
+    if (!existingEntry) {
+      throw new Error("Entry not found");
+    }
+
+    // Recalculate positivity score using the same AI logic as createEntryAction
+    const unifiedPrompt = [
+      {
+        role: "system",
+        content: `You are a journaling assistant. Given a user's journal entry, return a single JSON object with the following fields:
+ - title: a creative, engaging, and relevant title for the entry (do NOT use generic titles like 'Journal Entry' or 'My Day'). The title should be story-driven and lean toward a positive, growth-oriented framing, even if the entry discusses challenges.
+ - summary: a concise summary of the entry, written in second person and looking toward the future (e.g., "You will...", "You are going to...").
+ - tags: an array of 1-5 concise tags (single words or short phrases) that best summarize the main topics, emotions, or activities
+ - negativePhrases: an array of objects, each with 'negative' (the negative or self-critical sentence) and 'suggested' (a positive or reframed alternative for that sentence)
+ - positivity: a number from 0-100 representing the overall positivity of the entry
+ - questions: an array of 2-3 reflective questions (each an object with 'question' and 'inputType'). The questions should be insightful, thought-provoking, and encourage deeper self-reflection and growth. Use the user's entries from the past week to make the questions more relevant and connected to their recent experiences. Avoid generic or surface-level questions; make them specific to the user's entry and helpful for personal development.
+Respond ONLY with a valid JSON object, no commentary or extra text. Example:
+{"title": "A Day of Growth", "summary": "...", "tags": ["productivity", "fatigue"], "negativePhrases": [{"negative": "I felt tired.", "suggested": "I did my best despite being tired."}], "positivity": 42, "questions": [{"question": "...", "inputType": 1}]}`
+      },
+      {
+        role: "user",
+        content: newJournalText
+      }
+    ];
+
+    const aiOut = await HfInference.chatCompletion({
+      model: "Qwen/Qwen3-32B",
+      provider: "cerebras",
+      messages: unifiedPrompt,
+      max_tokens: 1024,
+      temperature: 0.1,
+    });
+
+    const aiContent = aiOut.choices?.[0]?.message?.content || "{}";
+    console.log("[updateJournalEntryAction] AI model response:", aiContent);
+    const cleanAIContent = extractJsonObjectFromModelResponse(aiContent);
+    let aiObj: any = {};
+    try {
+      aiObj = JSON.parse(cleanAIContent);
+    } catch {
+      aiObj = {};
+    }
+
+    // Extract fields with fallbacks
+    const title = typeof aiObj.title === 'string' ? aiObj.title : '';
+    const summary = typeof aiObj.summary === 'string' ? aiObj.summary : '';
+    const tags = Array.isArray(aiObj.tags) ? aiObj.tags : [];
+    const negativePhrases = Array.isArray(aiObj.negativePhrases) ? aiObj.negativePhrases : [];
+    const positivity = typeof aiObj.positivity === 'number' && !isNaN(aiObj.positivity)
+      ? Math.max(0, Math.min(100, aiObj.positivity))
+      : 0;
+    const questions = Array.isArray(aiObj.questions) ? aiObj.questions : [];
+
+    // Get existing sentiment history from sentimentHistory field
+    let sentimentHistory = [];
+    try {
+      if (existingEntry.sentimentHistory) {
+        sentimentHistory = Array.isArray(existingEntry.sentimentHistory) 
+          ? existingEntry.sentimentHistory 
+          : JSON.parse(existingEntry.sentimentHistory as string);
+      } else if (typeof existingEntry.sentiment === 'number') {
+        // Convert single number to history format
+        sentimentHistory = [{
+          score: existingEntry.sentiment,
+          timestamp: existingEntry.createdAt.toISOString(),
+          version: 'original'
+        }];
+      }
+    } catch (e) {
+      // If parsing fails, start with empty array
+      sentimentHistory = [];
+    }
+
+    // Add new positivity score to history
+    const newSentimentEntry = {
+      score: positivity,
+      timestamp: new Date().toISOString(),
+      version: 'reframed'
+    };
+    sentimentHistory.push(newSentimentEntry);
+
+    // Update the entry with new journal text and sentiment history
+    const updatedEntry = await prisma.entry.update({
+      where: { id: entryId, authorId: user.id },
+      data: {
+        journalEntry: [
+          {
+            timestamp: new Date().toISOString(),
+            text: newJournalText,
+          },
+        ],
+        summary: JSON.stringify({ title, summary }),
+        sentiment: positivity, // Keep current score as latest
+        sentimentHistory: sentimentHistory, // Store full history
+        negativePhrases: negativePhrases,
+        tags: tags,
+        userResponse: JSON.stringify(questions),
+        updatedAt: new Date(),
+      },
+    });
+
+    return { 
+      success: true, 
+      data: updatedEntry,
+      newPositivity: positivity,
+      newSummary: { title, summary },
+      newTags: tags,
+      newNegativePhrases: negativePhrases,
+      sentimentHistory: sentimentHistory,
+    };
+  } catch (error) {
+    return {
+      success: false,
+      message: error instanceof Error ? error.message : "Unknown error",
+    };
+  }
+};
