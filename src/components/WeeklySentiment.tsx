@@ -101,73 +101,32 @@ function getISOWeek(date: Date) {
 }
 
 export function WeeklySentiment({ entry }: Props) {
-  // Transform each entry to include sentiment history
-  const chartDataAll = entry
-    .flatMap(({ createdAt, summary, sentiment, sentimentHistory }) => {
-      try {
-        const summaryObj = JSON.parse(summary);
-        const baseDate = new Date(createdAt);
-        
-        // Use sentiment history for all data points
-        const dataPoints = [];
-        
-        console.log('Processing entry:', { createdAt, sentiment, sentimentHistory });
-        
-        if (sentimentHistory && Array.isArray(sentimentHistory)) {
-          console.log('Found sentiment history:', sentimentHistory);
-          // Use all sentiment history points
-          sentimentHistory.forEach((historyItem: any) => {
-            console.log('Processing history item:', historyItem);
-            if (historyItem && typeof historyItem.score === 'number' && !isNaN(historyItem.score)) {
-              dataPoints.push({
-                day: formatDate(String(historyItem.timestamp || createdAt)),
-                date: new Date(historyItem.timestamp || createdAt),
-                sentiment: historyItem.score,
-                summary: summaryObj.summary || "",
-                version: historyItem.version || 'unknown',
-                timestamp: historyItem.timestamp || createdAt,
-              });
-            }
-          });
-        } else if (typeof sentiment === 'number' && !isNaN(sentiment)) {
-          console.log('Using fallback sentiment:', sentiment);
-          // Fallback to current sentiment if no history exists
-          dataPoints.push({
-            day: formatDate(createdAt),
-            date: baseDate,
-            sentiment: sentiment,
-            summary: summaryObj.summary || "",
-            version: 'current',
-            timestamp: createdAt,
-          });
-        }
-        
-        console.log('Generated data points:', dataPoints);
-        
-        return dataPoints;
-      } catch {
-        return [];
-      }
-    })
-    .filter(Boolean)
-    .sort((a, b) => a!.date.getTime() - b!.date.getTime());
+  // Map each entry to a single data point per day with original and newest sentiment
+  const chartDataAll = entry.map(({ createdAt, summary, sentiment, sentimentHistory }) => {
+    let summaryObj = {};
+    try {
+      summaryObj = summary ? JSON.parse(summary) : {};
+    } catch {}
+    let original = null, newest = null;
+    if (sentimentHistory && Array.isArray(sentimentHistory) && sentimentHistory.length > 0) {
+      original = sentimentHistory[0]?.score ?? null;
+      newest = sentimentHistory[sentimentHistory.length - 1]?.score ?? null;
+    } else if (typeof sentiment === 'number') {
+      original = newest = sentiment;
+    }
+    return {
+      day: formatDate(createdAt),
+      date: new Date(createdAt),
+      original,
+      newest,
+      summary: summaryObj.summary || "",
+    };
+  });
 
   // Determine the ISO week and year to filter by
   let weekToShow: number, yearToShow: number;
   if (chartDataAll.length > 0) {
     const firstDate = chartDataAll[0].date;
-    // getDateOfISOWeek returns the Monday of the ISO week
-    const weekMonday = getDateOfISOWeek(
-      // getISOWeek from WeeklyCalendar logic
-      (() => {
-        const tmp = new Date(Date.UTC(firstDate.getUTCFullYear(), firstDate.getUTCMonth(), firstDate.getUTCDate()));
-        const dayNum = tmp.getUTCDay() || 7;
-        tmp.setUTCDate(tmp.getUTCDate() + 4 - dayNum);
-        const yearStart = new Date(Date.UTC(tmp.getUTCFullYear(), 0, 1));
-        return Math.ceil((((tmp.getTime() - yearStart.getTime()) / 86400000) + 1) / 7);
-      })(),
-      firstDate.getUTCFullYear()
-    );
     weekToShow = (() => {
       const tmp = new Date(Date.UTC(firstDate.getUTCFullYear(), firstDate.getUTCMonth(), firstDate.getUTCDate()));
       const dayNum = tmp.getUTCDay() || 7;
@@ -176,7 +135,6 @@ export function WeeklySentiment({ entry }: Props) {
       return Math.ceil((((tmp.getTime() - yearStart.getTime()) / 86400000) + 1) / 7);
     })();
     yearToShow = firstDate.getUTCFullYear();
-    // weekMonday is the start of the week
   } else {
     const now = new Date();
     weekToShow = (() => {
@@ -204,80 +162,45 @@ export function WeeklySentiment({ entry }: Props) {
     return d;
   });
 
-  // Create separate data points for each sentiment score on the same day
-  const chartDataFull = [];
-  
-  // Group all sentiment data by day
-  const sentimentByDay: Record<string, any[]> = {};
-  chartData.forEach((dataPoint) => {
-    const dayKey = dataPoint.date.toISOString().split('T')[0]; // YYYY-MM-DD
-    if (!sentimentByDay[dayKey]) {
-      sentimentByDay[dayKey] = [];
-    }
-    sentimentByDay[dayKey].push(dataPoint);
+  // Fill in missing days with nulls for both series
+  const chartDataFull = weekDays.map((date) => {
+    const dayKey = date.toLocaleDateString(undefined, { month: "short", day: "numeric" });
+    const found = chartData.find(d => d.day === dayKey);
+    return {
+      day: dayKey,
+      date,
+      original: found && found.original !== null ? found.original : 0, // Drop to zero
+      newest: found && found.newest !== null ? found.newest : 0,      // Drop to zero
+      summary: found ? found.summary : "No entry",
+    };
   });
-  
-  // Create data points for each day
-  weekDays.forEach((date) => {
-    const dayKey = date.toISOString().split('T')[0];
-    const daySentiments = sentimentByDay[dayKey] || [];
-    
-    if (daySentiments.length === 0) {
-      // No sentiments for this day
-      chartDataFull.push({
-        day: date.toLocaleDateString(undefined, { month: "short", day: "numeric" }),
-        date,
-        sentiment: 0,
-        summary: "No entry",
-      });
-    } else {
-              // Create a separate data point for each sentiment on this day
-        daySentiments.forEach((sentiment, index) => {
-          const sentimentDate = new Date(sentiment.timestamp || date);
-          // Add time to the day label to distinguish multiple points on same day
-          const timeString = sentimentDate.toLocaleTimeString(undefined, { 
-            hour: '2-digit', 
-            minute: '2-digit',
-            hour12: false 
-          });
-          chartDataFull.push({
-            day: `${date.toLocaleDateString(undefined, { month: "short", day: "numeric" })} ${timeString}`,
-            date: sentimentDate,
-            sentiment: sentiment.sentiment,
-            summary: sentiment.summary,
-            version: sentiment.version,
-            timestamp: sentiment.timestamp,
-          });
-        });
-    }
-  });
-  
-  // Sort by date
-  chartDataFull.sort((a, b) => a.date.getTime() - b.date.getTime());
 
   console.log('WeeklySentiment chartDataFull:', chartDataFull);
 
-  const first = chartData[0]?.sentiment ?? 0;
-  const last = chartData[chartData.length - 1]?.sentiment ?? 0;
+  // Calculate improvement
+  const first = chartData.find(d => d.original !== null)?.original ?? 0;
+  const last = chartData.reverse().find(d => d.newest !== null)?.newest ?? 0;
   const improvement = (last - first).toFixed(2);
 
-  // Calculate weekly score totals
-  const weeklyScores: Record<string, number> = {};
+  // Calculate weekly score totals for both series
+  const weeklyScores: Record<string, { original: number, newest: number }> = {};
   chartData.forEach((entry) => {
     const week = getISOWeek(entry.date);
-    weeklyScores[week] = (weeklyScores[week] || 0) + entry.sentiment;
+    if (!weeklyScores[week]) weeklyScores[week] = { original: 0, newest: 0 };
+    weeklyScores[week].original += entry.original ?? 0;
+    weeklyScores[week].newest += entry.newest ?? 0;
   });
 
   return (
     <div className="w-full max-w-4xl">
       <div className="mb-4">
-        <h2 className="text-xl font-semibold">Positivity Score Over Time</h2>
+        <h2 className="text-xl font-semibold">Positivity Score This Week</h2>
         <p className="text-muted-foreground text-sm">
           Based on each individual journal entry
         </p>
       </div>
 
-      <ChartContainer config={chartConfig}>
+      <ChartContainer config={{ original: { label: "Original Sentiment", color: "#f57459" }, newest: { label: "Newest Sentiment", color: "#f1396a" } }}>
         <AreaChart
           data={chartDataFull}
           margin={{ top: 10, right: 20, left: 0, bottom: 60 }}
@@ -300,16 +223,47 @@ export function WeeklySentiment({ entry }: Props) {
             axisLine={false}
             tickFormatter={(val) => val.toFixed(0)}
           />
-          <Tooltip content={<CustomTooltip />} />
+          <Tooltip content={({ active, payload }) => {
+            if (active && payload && payload.length > 0) {
+              const data = payload[0].payload;
+              return (
+                <div className="max-w-xs rounded-md border bg-white p-3 text-sm shadow-md">
+                  <p className="font-medium">{formatFullDate(data.date)}</p>
+                  <p className="text-muted-foreground mt-1 line-clamp-4">
+                    {data.summary || "No summary available"}
+                  </p>
+                  <p className="mt-2 font-semibold" style={{ color: '#f57459' }}>
+                    Original: {data.original !== null ? data.original : "-"}
+                  </p>
+                  <p className="mt-2 font-semibold" style={{ color: '#f1396a' }}>
+                    Newest: {data.newest !== null ? data.newest : "-"}
+                  </p>
+                </div>
+              );
+            }
+            return null;
+          }} />
           <Area
-            dataKey="sentiment"
+            dataKey="original"
             type="monotone"
-            stroke="#ff3e66"
-            fill="#ff3e66"
+            stroke="#f57459"
+            fill="#f57459"
             fillOpacity={0.2}
             strokeWidth={2}
+            name="Original Sentiment"
+            connectNulls={true}
             isAnimationActive={true}
-            connectNulls={false}
+          />
+          <Area
+            dataKey="newest"
+            type="monotone"
+            stroke="#f1396a"
+            fill="#f1396a"
+            fillOpacity={0.2}
+            strokeWidth={2}
+            name="Newest Sentiment"
+            connectNulls={true}
+            isAnimationActive={true}
           />
           <ChartLegend content={<ChartLegendContent />} />
         </AreaChart>
@@ -322,10 +276,7 @@ export function WeeklySentiment({ entry }: Props) {
         </div>
         {Object.entries(weeklyScores).map(([week, score]) => (
           <div key={week} className="text-muted-foreground text-sm">
-            Week {week}: Total Positivity Score:{" "}
-            <span className="text-foreground font-semibold">
-              {score.toFixed(1)}
-            </span>
+            Week {week}: Total Original: <span className="text-foreground font-semibold">{score.original.toFixed(1)}</span> | Total Newest: <span className="text-foreground font-semibold">{score.newest.toFixed(1)}</span>
           </div>
         ))}
       </div>

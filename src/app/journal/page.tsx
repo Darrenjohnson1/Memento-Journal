@@ -11,6 +11,7 @@ import BackButton from "@/components/BackButton";
 import JournalDeleteButton from "@/components/JournalDeleteButton";
 import Link from "next/link";
 import { ChevronLeft, ChevronRight } from "lucide-react";
+import AskAIButton from "@/components/AskAIButton";
 
 // ISO week calculation
 function getISOWeek(date: Date) {
@@ -94,7 +95,7 @@ async function page({ searchParams }: Props) {
                   </button>
                 </Link>
               ) : <div className="w-9 h-9" />} {/* Reserve space if no button */}
-              <h1 className="text-3xl font-medium text-center min-w-[220px]">
+              <h1 className="text-2xl font-medium text-center min-w-[220px]">
                 {entry?.createdAt.toLocaleString("en-US", {
                   year: "numeric",
                   month: "long",
@@ -116,6 +117,11 @@ async function page({ searchParams }: Props) {
         <div className="flex h-full flex-col items-center gap-8 pt-8 pb-16 bg-background min-h-screen">
           <div className="flex w-full max-w-4xl flex-col justify-center gap-6 px-4">
             <JournalEntry entry={entry} />
+            {/* Discover Insights Section */}
+            <section className="mt-12 mb-8 w-full">
+              <h2 className="text-2xl font-bold mb-4">Discover Insights</h2>
+              <AskAIButton user={user} weekEntries={entry ? [entry] : []} />
+            </section>
           </div>
           {entry.append ? (
             <div className="bg-popover relative flex h-24 w-full max-w-4xl flex-col items-center justify-center border-b-1">

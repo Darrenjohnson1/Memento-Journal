@@ -34,12 +34,30 @@ export function NewDayCarousel({ entry }: any) {
   const [thinking, setThinking] = useState(false);
   const { entryText, setEntryText } = useEntry();
   const router = useRouter();
+  const chatContentRef = useRef<HTMLDivElement>(null);
 
   const progress = ((currentIndex) / questions.length) * 100;
 
   useEffect(() => {
     setQuestionText(answers[currentIndex] || "");
   }, [currentIndex]);
+
+  // Scroll to bottom only when a new answer is added or currentIndex increases
+  const prevAnswersLength = useRef(answers.length);
+  const prevCurrentIndex = useRef(currentIndex);
+  useEffect(() => {
+    if (
+      answers.length > prevAnswersLength.current ||
+      currentIndex > prevCurrentIndex.current
+    ) {
+      chatContentRef.current?.scrollTo({
+        top: chatContentRef.current.scrollHeight,
+        behavior: "smooth",
+      });
+    }
+    prevAnswersLength.current = answers.length;
+    prevCurrentIndex.current = currentIndex;
+  }, [answers.length, currentIndex]);
 
   const handleSubmit = () => {
     if (!questionText.trim() || thinking) return;
@@ -84,23 +102,22 @@ export function NewDayCarousel({ entry }: any) {
   };
 
   return (
-    <Card className="mx-auto w-full max-w-xl flex flex-col h-[600px]">
-      <CardHeader className="text-center">
-        <CardTitle className="text-2xl">Plan Your Day</CardTitle>
-        <CardDescription className="text-xl">Answer a few questions to help plan your day. Your responses will guide your journal and insights.</CardDescription>
-      </CardHeader>
-      <CardContent className="flex flex-col flex-1 gap-6 overflow-auto pb-32">
-        {/* Chat bubbles: alternate bot/user, same style but different alignment/colors */}
-        <div className="flex flex-col gap-2 mt-2">
+    <div className="mx-auto w-full max-w-xl">
+      <div className="text-center mt-4 mb-2">
+        <div className="text-2xl font-bold">Plan Your Day</div>
+        <div className="text-xl text-muted-foreground">Answer a few questions to help plan your day. Your responses will guide your journal and insights.</div>
+      </div>
+      <div className="flex flex-col gap-2 overflow-auto pb-[195px]" style={{minHeight: 0}}>
+        <div className="flex flex-col gap-2 mt-2" ref={chatContentRef} style={{overflowY: 'auto', minHeight: 0}}>
           {answers.map((ans, idx) => (
             idx < currentIndex && ans ? (
               <React.Fragment key={idx}>
                 {/* Bot question bubble */}
-                <div className="self-start max-w-[60%] rounded-lg px-4 py-2 text-sm break-words bg-gray-100 text-gray-700 mr-auto mb-1 shadow">
+                <div className="mr-auto max-w-[60%] rounded-lg px-4 py-2 text-sm break-words bg-gray-100 text-gray-700">
                   {questions[idx].question}
                 </div>
                 {/* User answer bubble */}
-                <div className="self-end max-w-[60%] rounded-lg px-4 py-2 text-sm break-words bg-blue-100 text-blue-900 ml-auto mb-2 shadow">
+                <div className="ml-auto max-w-[60%] rounded-lg px-4 py-2 text-sm break-words bg-blue-100 text-blue-900">
                   {ans}
                 </div>
               </React.Fragment>
@@ -108,18 +125,18 @@ export function NewDayCarousel({ entry }: any) {
           ))}
           {/* Current question bubble (unless finished) */}
           {currentIndex < questions.length && (
-            <div className="self-start max-w-[60%] rounded-lg px-4 py-2 text-sm break-words bg-gray-100 text-gray-700 mr-auto mb-1 shadow">
+            <div className="mr-auto max-w-[60%] rounded-lg px-4 py-2 text-sm break-words bg-gray-100 text-gray-700">
               {questions[currentIndex].question}
             </div>
           )}
           {/* Thinking bubble */}
           {thinking && (
-            <div className="self-start max-w-[60%] animate-pulse rounded-lg bg-gray-200 px-4 py-2 text-sm text-gray-600 mr-auto mb-1 shadow">
+            <div className="mr-auto max-w-[60%] rounded-lg px-4 py-2 text-sm break-words bg-gray-100 text-gray-700 animate-pulse">
               Thinking...
             </div>
           )}
         </div>
-      </CardContent>
+      </div>
       {/* Input area at the bottom, sticky/fixed */}
       <div
         className="fixed bottom-0 left-0 w-full max-w-xl mx-auto flex cursor-text flex-col rounded-t-lg border-t bg-background p-4 z-50"
@@ -140,11 +157,11 @@ export function NewDayCarousel({ entry }: any) {
           <ArrowUpIcon className="text-background" />
         </Button>
       </div>
-      {/* Progress bar at the very bottom of the card */}
+      {/* Progress bar at the very bottom */}
       <div className="w-full px-4 pb-2">
         <Progress value={progress} className="mt-2" />
       </div>
-    </Card>
+    </div>
   );
 }
 

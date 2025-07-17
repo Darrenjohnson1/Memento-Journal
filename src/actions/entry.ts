@@ -216,34 +216,26 @@ export const followUpEntryAction = async (
     const oneWeekAgo = new Date(now);
     oneWeekAgo.setDate(now.getDate() - 7);
 
-    const dbUser = await prisma.user.findUnique({
+    let dbUser = await prisma.user.findUnique({
       where: { id: user.id },
       select: { preference: true },
     });
-    const userPreference = dbUser?.preference;
+    let userPreference = dbUser?.preference;
 
     let existingEntry = await prisma.entry.findUnique({
       where: { id: entryId },
     });
 
-    let todaysFormattedEntry = existingEntry
-      ? `
-        Previous Journal Entry: ${JSON.stringify(existingEntry.journalEntry)}
-        QuestionResponses: ${JSON.stringify(existingEntry.userResponse)}
-        Created at: ${existingEntry.createdAt}
-        Last updated: ${existingEntry.updatedAt}
-        Previous AI Summary: ${existingEntry.summary}
-      `.trim()
-      : "";
-
-    const pastEntries = await prisma.entry.findMany({
+    const entry = await prisma.entry.findMany({
       where: {
         authorId: user.id,
         createdAt: {
           gte: oneWeekAgo,
         },
       },
-      orderBy: { createdAt: "desc" },
+      orderBy: {
+        createdAt: "desc",
+      },
       select: {
         journalEntry: true,
         userResponse: true,
@@ -253,116 +245,66 @@ export const followUpEntryAction = async (
       },
     });
 
-    const formattedEntry = pastEntries
-      .map((entry) =>
-        `
+    let formattedEntry = "";
+    if (entry.length > 0) {
+      formattedEntry = entry
+        .map((entry) =>
+          `
+        Text: ${JSON.stringify(entry.journalEntry)}
+        QuestionResponses: ${JSON.stringify(entry.userResponse)}
         Created at: ${entry.createdAt}
-        Journal: ${JSON.stringify(entry.journalEntry)}
-        AI Summary: ${entry.summary}
-        `.trim(),
-      )
-      .join("\n\n");
+        Last updated: ${entry.updatedAt}
+        Previous AI Summary: ${entry.summary}
+            `.trim(),
+        )
+        .join("\n\n");
+    }
 
-    // Extract tags at follow-up time
-    const tagMessages = [
+    // Use the same AI prompt as createEntryAction
+    const unifiedPrompt = [
       {
         role: "system",
-        content: `You are an assistant that extracts relevant tags or keywords from a user's journal entry. Always return a JSON array of 1-5 concise tags (single words or short phrases) that best summarize the main topics, emotions, or activities in the entry. Do not include explanations, extra text, or objects—just the array. Only return an empty array if the entry is truly empty or meaningless. Example: ["productivity", "fatigue", "video games", "errands", "connection"]`
+        content: `You are a journaling assistant. Given a user's journal entry, return a single JSON object with the following fields:
+ - title: a creative, engaging, and relevant title for the entry (do NOT use generic titles like 'Journal Entry' or 'My Day'). The title should be story-driven and lean toward a positive, growth-oriented framing, even if the entry discusses challenges.
+ - summary: a concise summary of the entry, written in second person and looking toward the future (e.g., "You will...", "You are going to...").
+ - tags: an array of 1-5 concise tags (single words or short phrases) that best summarize the main topics, emotions, or activities
+ - negativePhrases: an array of objects, each with 'negative' (the negative or self-critical sentence) and 'suggested' (a positive or reframed alternative for that sentence)
+ - positivity: a number from 0-100 representing the overall positivity of the entry
+ - questions: an array of 2-3 reflective questions (each an object with 'question' and 'inputType'). The questions should be insightful, thought-provoking, and encourage deeper self-reflection and growth. Use the user's entries from the past week to make the questions more relevant and connected to their recent experiences. Avoid generic or surface-level questions; make them specific to the user's entry and helpful for personal development.
+Respond ONLY with a valid JSON object, no commentary or extra text. Example:
+{"title": "A Day of Growth", "summary": "...", "tags": ["productivity", "fatigue"], "negativePhrases": [{"negative": "I felt tired.", "suggested": "I did my best despite being tired."}], "positivity": 42, "questions": [{"question": "...", "inputType": 1}]}`
       },
       {
         role: "user",
         content: journalText
       }
     ];
-    const tagOut = await HfInference.chatCompletion({
+    const aiOut = await HfInference.chatCompletion({
       model: "Qwen/Qwen3-32B",
       provider: "cerebras",
-      messages: tagMessages,
-      max_tokens: 128,
-      temperature: 0.1,
-    });
-    const tagContent = tagOut.choices?.[0]?.message?.content || "[]";
-    console.log("[followUpEntryAction] tag extraction model response:", tagContent);
-    let tags: string[] = [];
-    try {
-      tags = JSON.parse(tagContent);
-    } catch {
-      tags = [];
-    }
-
-    const messages = [
-      {
-        role: "system",
-        content: `
-          You are a warm and thoughtful journaling assistant.
-          Based on the user's journal entry, generate 2–3 follow-up reflection questions to encourage gentle self-awareness and insight.
-          The tone should be light, observant, and curious — not overly therapeutic or intense unless the content calls for it.
-          Vary the question formats (open-ended paragraph, close-ended sentence, and Likert scale) to keep engagement fresh.
-          Keep the questions relevant to what the user wrote, helping them reflect on patterns, values, or small joys.
-
-          The tone should match the user's preferred style: "${userPreference}".
-
-          Assume:
-          - All entries provided are written by the user.
-          - You have access to 7 days of journal context.
-          - Your questions should vary in structure and format to stay engaging.
-
-          Use the following input types for variety:
-          1. Open-Ended Paragraph
-          2. Close-Ended Sentence
-          3. Likert Rating Scale
-
-          Respond with valid JSON:
-          [
-            {
-              "question": "Your question here",
-              "inputType": 1
-            },
-            ...
-          ]
-
-          —
-
-          **Today's Earlier Planning Journal:**
-          ${todaysFormattedEntry}
-
-          **Today's Journal Follow Up:**
-          ${journalText}
-
-          **Entries from the Past 7 Days:**
-          ${formattedEntry}
-        `,
-      },
-    ];
-
-    const out = await HfInference.chatCompletion({
-      model: "Qwen/Qwen3-32B",
-      provider: "cerebras",
-      messages,
+      messages: unifiedPrompt,
       max_tokens: 1024,
       temperature: 0.1,
     });
-
-    const rawSummary = out.choices?.[0]?.message?.content || "[]";
-    console.log(messages);
-    console.log(rawSummary);
-    const cleanSummary = rawSummary
-      .replace(/<think>[\s\S]*?<\/think>/gi, "")
-      .trim();
-
-    // Extract positivity score from summary
-    let positivity = 0;
-    let summaryString = cleanSummary;
+    const aiContent = aiOut.choices?.[0]?.message?.content || "{}";
+    const cleanAIContent = extractJsonObjectFromModelResponse(aiContent);
+    let aiObj: any = {};
     try {
-      const parsedSummary = JSON.parse(cleanSummary);
-      if (typeof parsedSummary.positivity === 'number' && !isNaN(parsedSummary.positivity)) {
-        positivity = Math.max(0, Math.min(100, parsedSummary.positivity));
-      }
-      delete parsedSummary.positivity;
-      summaryString = JSON.stringify(parsedSummary);
-    } catch {}
+      aiObj = JSON.parse(cleanAIContent);
+    } catch {
+      aiObj = {};
+    }
+    // Fallbacks for missing fields
+    const title = typeof aiObj.title === 'string' ? aiObj.title : '';
+    const summary = typeof aiObj.summary === 'string' ? aiObj.summary : '';
+    const tags = Array.isArray(aiObj.tags) ? aiObj.tags : [];
+    const negativePhrases = Array.isArray(aiObj.negativePhrases) ? aiObj.negativePhrases : [];
+    const positivity = typeof aiObj.positivity === 'number' && !isNaN(aiObj.positivity)
+      ? Math.max(0, Math.min(100, aiObj.positivity))
+      : 0;
+    const questions = Array.isArray(aiObj.questions) ? aiObj.questions : [];
 
-    // Update or create the entry with follow-up journal, tags, and sentiment
+    // Save all fields to their respective columns
     if (!existingEntry) {
       // Use clientLocalDate for createdAt/updatedAt if provided
       const createdAt = clientLocalDate ? new Date(clientLocalDate) : new Date();
@@ -370,20 +312,21 @@ export const followUpEntryAction = async (
         data: {
           id: entryId,
           authorId: user.id,
-          userResponse: "{}", // required, empty object
-          userResponse2: cleanSummary,
-          summary: summaryString,
+          userResponse: JSON.stringify(questions),
+          userResponse2: JSON.stringify(questions),
+          summary: JSON.stringify({ title, summary }),
           sentiment: positivity,
           isOpen: "partial",
           createdAt,
           updatedAt: createdAt,
-          journalEntry: [], // required, empty array
+          journalEntry: [],
           journalEntry2: [
             {
               timestamp: createdAt.toISOString(),
               text: journalText,
             },
           ],
+          negativePhrases: negativePhrases,
           tags: tags,
         },
       });
@@ -391,11 +334,12 @@ export const followUpEntryAction = async (
       await prisma.entry.update({
         where: { id: entryId },
         data: {
-          userResponse2: cleanSummary,
-          summary: summaryString,
+          userResponse2: JSON.stringify(questions),
+          summary: JSON.stringify({ title, summary }),
           sentiment: positivity,
           isOpen: "partial",
           tags: tags,
+          negativePhrases: negativePhrases,
         },
       });
     }
@@ -527,6 +471,10 @@ export const AskAIAboutEntryAction = async (
           Assume all questions are related to the user's notes. 
           Keep answers succinct and return clean HTML. Use proper HTML tags: 
           <p>, <strong>, <em>, <ul>, <ol>, <li>, <h1>-<h6>, <br>, etc.
+
+          Keep your answer as short and direct as possible. Do not include lengthy reasoning or step-by-step thinking. Go straight to the answer.
+
+          Never include any <think>...</think> or internal reasoning in your response. Only return the final answer in HTML.
           
           Rendered like this in JSX:
           <p dangerouslySetInnerHTML={{ __html: YOUR_RESPONSE }} />
@@ -551,8 +499,11 @@ export const AskAIAboutEntryAction = async (
       max_tokens: 512,
       temperature: 0.1,
     });
-    console.log(out.choices[0].message.content);
-    return out.choices[0].message.content || "A problem has occured...";
+    let content = out.choices[0].message.content || "A problem has occured...";
+    // Strip any <think>...</think> blocks from the response
+    content = content.replace(/<think>[\s\S]*?<\/think>/gi, '').trim();
+    console.log(content);
+    return content;
 
     return { errorMessage: null };
   } catch (error) {
@@ -777,6 +728,130 @@ Respond ONLY with a valid JSON object, no commentary or extra text. Example:
       newSummary: { title, summary },
       newTags: tags,
       newNegativePhrases: negativePhrases,
+      sentimentHistory: sentimentHistory,
+    };
+  } catch (error) {
+    return {
+      success: false,
+      message: error instanceof Error ? error.message : "Unknown error",
+    };
+  }
+};
+
+export const reframeJournalEntryAction = async (
+  entryId: string,
+  newJournalText: string,
+) => {
+  try {
+    const user = await getUser();
+    if (!user) throw new Error("You must be logged in to update a journal entry");
+
+    // Get the existing entry to preserve other data
+    const existingEntry = await prisma.entry.findUnique({
+      where: { id: entryId, authorId: user.id },
+    });
+
+    if (!existingEntry) {
+      throw new Error("Entry not found");
+    }
+
+    // Recalculate positivity score using the same AI logic as createEntryAction
+    const unifiedPrompt = [
+      {
+        role: "system",
+        content: `You are a journaling assistant. Given a user's journal entry, return a single JSON object with the following fields:
+ - positivity: a number from 0-100 representing the overall positivity of the entry
+Respond ONLY with a valid JSON object, no commentary or extra text. Example:
+{"positivity": 42}`
+      },
+      {
+        role: "user",
+        content: newJournalText
+      }
+    ];
+
+    const aiOut = await HfInference.chatCompletion({
+      model: "Qwen/Qwen3-32B",
+      provider: "cerebras",
+      messages: unifiedPrompt,
+      max_tokens: 256,
+      temperature: 0.1,
+    });
+
+    const aiContent = aiOut.choices?.[0]?.message?.content || "{}";
+    const cleanAIContent = extractJsonObjectFromModelResponse(aiContent);
+    let aiObj: any = {};
+    try {
+      aiObj = JSON.parse(cleanAIContent);
+    } catch {
+      aiObj = {};
+    }
+
+    // Extract positivity with fallback
+    let positivity = typeof aiObj.positivity === 'number' && !isNaN(aiObj.positivity)
+      ? Math.max(0, Math.min(100, aiObj.positivity))
+      : 0;
+
+    // Get existing sentiment history from sentimentHistory field
+    let sentimentHistory = [];
+    let originalPositivity = 0;
+    try {
+      if (existingEntry.sentimentHistory) {
+        sentimentHistory = Array.isArray(existingEntry.sentimentHistory) 
+          ? existingEntry.sentimentHistory 
+          : JSON.parse(existingEntry.sentimentHistory as string);
+        if (Array.isArray(sentimentHistory) && sentimentHistory.length > 0) {
+          originalPositivity = sentimentHistory[0].score;
+        } else if (typeof existingEntry.sentiment === 'number') {
+          originalPositivity = existingEntry.sentiment;
+        }
+      } else if (typeof existingEntry.sentiment === 'number') {
+        // Convert single number to history format
+        sentimentHistory = [{
+          score: existingEntry.sentiment,
+          timestamp: existingEntry.createdAt.toISOString(),
+          version: 'original'
+        }];
+        originalPositivity = existingEntry.sentiment;
+      }
+    } catch (e) {
+      sentimentHistory = [];
+    }
+
+    // Ensure positivity does not drop below original
+    if (positivity < originalPositivity) {
+      positivity = originalPositivity;
+    }
+
+    // Add new positivity score to history
+    const newSentimentEntry = {
+      score: positivity,
+      timestamp: new Date().toISOString(),
+      version: 'reframed'
+    };
+    sentimentHistory.push(newSentimentEntry);
+
+    // Update the entry with new journal text and sentiment history only
+    const updatedEntry = await prisma.entry.update({
+      where: { id: entryId, authorId: user.id },
+      data: {
+        journalEntry: [
+          {
+            timestamp: new Date().toISOString(),
+            text: newJournalText,
+          },
+        ],
+        sentiment: positivity,
+        sentimentHistory: sentimentHistory, // Store full history
+        updatedAt: new Date(),
+        negativePhrases: [], // Clear suggested rewrites after reframing
+      },
+    });
+
+    return { 
+      success: true, 
+      data: updatedEntry,
+      newPositivity: positivity,
       sentimentHistory: sentimentHistory,
     };
   } catch (error) {

@@ -1,7 +1,7 @@
 "use client";
 
 import { User } from "@supabase/supabase-js";
-import React, { Fragment, useRef, useState, useTransition } from "react";
+import React, { Fragment, useRef, useState, useTransition, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import {
   Drawer,
@@ -20,6 +20,7 @@ import { Textarea } from "./ui/textarea";
 import { ArrowUpIcon } from "lucide-react";
 import { AskAIAboutEntryAction } from "@/actions/entry";
 import "@/styles/ai-response.css";
+import { Separator } from "./ui/separator";
 
 type Props = {
   user: User | null;
@@ -45,16 +46,17 @@ function AskAIButton({ user, weekEntries }: Props) {
   const [randomPhrase, setRandomPhrase] = useState(phrases[0]);
 
   const insightfulQuestions = [
-    "Do you want to know which day you were most positive this week?",
-    "Would you like to see a summary of your mood trends?",
-    "Are you curious about how your entries this week compare to last week?",
-    "Want to know which words you used most often in your journal?",
-    "Would you like to see if there's a pattern to your most productive days?",
-    "Do you want to know if your mood improved as the week went on?",
-    "Interested in which topics you wrote about most this week?",
-    "Would you like to see your average sentiment score for the week?",
-    "Curious if there's a link between your sleep and your mood this week?",
-  ];
+  "Which day was I most positive this week?",
+  "What do my mood trends look like lately?",
+  "How do my entries this week compare to last week?",
+  "Which words have I been using the most in my journal?",
+  "Is there a pattern to my most productive days?",
+  "Did my mood improve as the week went on?",
+  "What topics have I written about most this week?",
+  "What was my average sentiment score for the week?",
+  "Is there a connection between my sleep and my mood this week?",
+];
+
   const [suggestedQuestion, setSuggestedQuestion] = useState(insightfulQuestions[0]);
 
   const handleOnOpenChange = (isOpen: boolean) => {
@@ -126,7 +128,22 @@ function AskAIButton({ user, weekEntries }: Props) {
       next = insightfulQuestions[Math.floor(Math.random() * insightfulQuestions.length)];
     } while (next === suggestedQuestion && insightfulQuestions.length > 1);
     setSuggestedQuestion(next);
+    setQuestionText(next); // Populate the textarea with the suggestion
   };
+
+  // Only scroll to bottom when a new message is added
+  const prevQuestionsLength = useRef(questions.length);
+  const prevResponsesLength = useRef(responses.length);
+  useEffect(() => {
+    if (
+      questions.length > prevQuestionsLength.current ||
+      responses.length > prevResponsesLength.current
+    ) {
+      scrollToBottom();
+    }
+    prevQuestionsLength.current = questions.length;
+    prevResponsesLength.current = responses.length;
+  }, [questions.length, responses.length]);
 
   return (
     <Drawer open={open} onOpenChange={handleOnOpenChange}>
@@ -140,47 +157,65 @@ function AskAIButton({ user, weekEntries }: Props) {
             Talk with your journal and discover insights using AI.
           </DrawerDescription>
         </DrawerHeader>
-        <div className="mt-4 flex flex-col gap-8 pb-32 mx-2 md:mx-4">
-          <div className="flex flex-col items-center gap-2">
-            <p className="bot-response question text-muted-foreground text-sm">
-              {suggestedQuestion}
-            </p>
-            <div className="w-full flex justify-center">
-              <Button size="sm" variant="outline" onClick={handleGetAnotherQuestion} type="button">
-                Get Another Question
-              </Button>
-            </div>
-          </div>
-          {questions.map((question, index) => (
-            <Fragment key={index}>
-              {/* User message bubble */}
-              <div className="flex w-full">
-                <span className="ml-auto max-w-[60%] rounded-lg px-4 py-2 text-sm bg-blue-100 text-blue-900 text-right shadow break-words whitespace-pre-line">
-                  {question}
-                </span>
-              </div>
-              {/* AI response bubble */}
-              {responses[index] && (
-                <div className="flex w-full">
-                  <span
-                    className="mr-auto max-w-[60%] rounded-lg px-4 py-2 text-sm bg-gray-100 text-gray-800 text-left shadow break-words whitespace-pre-line"
-                    dangerouslySetInnerHTML={{ __html: responses[index] }}
-                  />
-                </div>
-              )}
-            </Fragment>
-          ))}
-          {isPending && <p className="animate-pulse text-sm">Thinking...</p>}
+        <div className="mt-4 flex flex-col gap-8 pb-[195px] mx-2 md:mx-4" ref={contentRef} style={{overflowY: 'auto', flex: 1, minHeight: 0}}>
+          {/* Removed suggested question bubble */}
+          {/* Render messages in chronological order */}
+          {questions.slice().reverse().map((question, revIndex) => {
+            const index = questions.length - 1 - revIndex;
+            // Only show the last (pending) question if not waiting for a response
+            const isLast = index === 0;
+            const isWaiting = isPending && isLast && responses.length < questions.length;
+            if (isWaiting) {
+              // Show user bubble and thinking bubble, but not the next question input
+              return (
+                <Fragment key={index}>
+                  <div className="flex w-full">
+                    <span className="ml-auto max-w-[60%] rounded-lg px-4 py-2 text-sm break-words bg-blue-100 text-blue-900">
+                      {question}
+                    </span>
+                  </div>
+                  <div className="flex w-full">
+                    <span className="mr-auto max-w-[60%] rounded-lg px-4 py-2 text-sm break-words bg-gray-100 text-gray-700 animate-pulse">
+                      Thinking...
+                    </span>
+                  </div>
+                </Fragment>
+              );
+            } else {
+              return (
+                <Fragment key={index}>
+                  <div className="flex w-full">
+                    <span className="ml-auto max-w-[60%] rounded-lg px-4 py-2 text-sm break-words bg-blue-100 text-blue-900">
+                      {question}
+                    </span>
+                  </div>
+                  {responses[index] && (
+                    <div className="flex w-full">
+                      <span
+                        className="mr-auto max-w-[60%] rounded-lg px-4 py-2 text-sm break-words bg-gray-100 text-gray-700"
+                        dangerouslySetInnerHTML={{ __html: responses[index] }}
+                      />
+                    </div>
+                  )}
+                </Fragment>
+              );
+            }
+          })}
         </div>
+        
         <div
           className="fixed bottom-0 left-0 w-full max-w-lg mx-auto flex cursor-text flex-col rounded-t-lg border-t bg-background p-4 z-50"
           style={{ right: 0 }}
           onClick={handleClickInput}
         >
+          <Button className="mb-4" size="sm" variant="outline" onClick={handleGetAnotherQuestion} type="button">
+          Get Suggestion
+          </Button>
+          <Separator/>
           <Textarea
             ref={textareaRef}
             placeholder="Ask me anything about your journal"
-            className="placeholder:text-muted-foreground resize-none rounded-none border-none bg-transparent p-0 shadow-none focus-visible:ring-0 focus-visible:ring-offset-0"
+            className="mt-8 placeholder:text-muted-foreground resize-none rounded-none border-none bg-transparent p-0 shadow-none focus-visible:ring-0 focus-visible:ring-offset-0"
             style={{
               minHeight: "0",
               lineHeight: "normal",

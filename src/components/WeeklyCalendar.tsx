@@ -201,8 +201,8 @@ export default function WeeklyCalendar({
               <ChevronLeft className="w-7 h-7 text-black" />
             </button>
             <div className="text-foreground text-center text-2xl font-medium min-w-[220px]">
-              Week {initialWeek} / {totalWeeks} — {initialYear}
-              <div className="text-xs text-muted-foreground mt-1">{formatWeekRange(weekStart, weekEnd)}</div>
+              Week {initialWeek} / {totalWeeks}
+              <div className="text-xs text-muted-foreground mt-1">{formatWeekRange(weekStart, weekEnd)} — {initialYear}</div>
             </div>
             <button className="p-2 rounded-full hover:bg-gray-300" aria-label="Next week" onClick={goToNextWeek}>
               <ChevronRight className="w-7 h-7 text-black" />

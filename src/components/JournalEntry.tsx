@@ -5,7 +5,7 @@ import { Separator } from "./ui/separator";
 import NewDayJournal from "./NewDayJournal";
 import PartialDayJournal from "./PartialDayJournal";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "./ui/card";
-import { extractNegativePhrasesAction, updateJournalEntryAction } from "@/actions/entry";
+import { extractNegativePhrasesAction, updateJournalEntryAction, reframeJournalEntryAction } from "@/actions/entry";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { Progress } from "@/components/ui/progress";
 // Placeholder for the AI rewrite action (to be implemented in backend)
@@ -80,6 +80,7 @@ function JournalEntry({ entry }: Props) {
   const totalPhrases = negativePhrases.length;
   const handlePrev = () => setCurrentPhraseIdx((idx) => Math.max(0, idx - 1));
   const handleNext = () => setCurrentPhraseIdx((idx) => Math.min(totalPhrases - 1, idx + 1));
+  const [hasReframed, setHasReframed] = useState(false);
 
   const handleRewriteChange = (idx: number, value: string) => {
     setUserRewrites((prev) => ({ ...prev, [idx]: value }));
@@ -117,27 +118,17 @@ function JournalEntry({ entry }: Props) {
       });
 
       // Call the backend to update the entry
-      const result = await updateJournalEntryAction(entry.id, improvedText);
+      const result = await reframeJournalEntryAction(entry.id, improvedText);
       
       if (result.success) {
         setSaveSuccess(true);
+        setHasReframed(true); // Mark as reframed
         // Update local state with new data
         if (result.newPositivity !== undefined) {
           entry.sentiment = result.newPositivity;
         }
         if (result.sentimentHistory) {
           entry.suggestedResponses = result.sentimentHistory;
-        }
-        if (result.newSummary) {
-          entry.summary = JSON.stringify(result.newSummary);
-          setParsedEntry(result.newSummary);
-        }
-        if (result.newTags) {
-          entry.tags = result.newTags;
-        }
-        if (result.newNegativePhrases) {
-          entry.negativePhrases = result.newNegativePhrases;
-          setNegativePhrases(result.newNegativePhrases);
         }
         // Update the journal text
         if (entry.journalEntry && entry.journalEntry.length > 0) {
@@ -197,6 +188,7 @@ function JournalEntry({ entry }: Props) {
   };
 
   console.log("entry", entry)
+  console.log('JournalEntry entry:', entry);
 
   useEffect(() => {
     if (!entry?.summary) {
@@ -213,8 +205,10 @@ function JournalEntry({ entry }: Props) {
       const parsed = JSON.parse(entry.summary);
       setParsedEntry(parsed);
       setError(null);
+      console.log('JournalEntry parsedEntry:', parsed);
     } catch (e) {
       setError("Error loading entry summary. Try refreshing.");
+      console.log('JournalEntry summary parse error:', e, entry.summary);
     }
   }, [entry, retryCount]);
 
@@ -252,6 +246,7 @@ function JournalEntry({ entry }: Props) {
   }, [entry]);
 
   console.log(entry);
+  console.log('JournalEntry error:', error);
 
   if (error) {
     return <div className="text-red-600">{error}</div>;
@@ -299,14 +294,19 @@ function JournalEntry({ entry }: Props) {
     return highlighted;
   }
 
+  console.log('JournalEntry journal text:', entry?.journalEntry?.[0]?.text, entry?.journalEntry2?.[0]?.text);
+  console.log('JournalEntry tags:', entry?.tags);
+  console.log('JournalEntry sentiment:', entry?.sentiment);
+  console.log('JournalEntry summary:', parsedEntry?.summary);
+
   return (
     <div>
       <div>
         <h2 className="mt-6 text-4xl font-bold">
-          {parsedEntry.title ? parsedEntry.title : "Incomplete draft."}
+          {parsedEntry?.title || entry?.title || "Untitled"}
         </h2>
         {/* Journal text now appears here */}
-        {(entry.journalEntry?.[0]?.text || entry.journalEntry2?.[0]?.text) && (
+        {(entry?.journalEntry?.[0]?.text || entry?.journalEntry2?.[0]?.text) && (
           <div>
             <h2 className="mt-5 text-3xl font-bold">Journal</h2>
             {entry.journalEntry?.[0]?.text && (
@@ -317,16 +317,16 @@ function JournalEntry({ entry }: Props) {
             )}
           </div>
         )}
-        {typeof sentiment === 'number' && (
+        {typeof entry?.sentiment === 'number' && (
           <div className="mt-5 mr-1 inline-flex items-center gap-2">
             <span
               className="inline-block h-3 w-3 rounded-full"
-              style={{ backgroundColor: sentimentToColor(sentiment), opacity: 0.7 }}
-              title={`Positivity: ${sentiment}`}
+              style={{ backgroundColor: sentimentToColor(entry.sentiment), opacity: 0.7 }}
+              title={`Positivity: ${entry.sentiment}`}
             />
             <span className="inline-block rounded-full bg-white px-3 py-1 text-xs font-semibold border-0 shadow-sm">
-              {sentimentType(sentiment)}
-              <span className="ml-2 text-gray-500 font-normal">{Math.round(sentiment)}</span>
+              {sentimentType(entry.sentiment)}
+              <span className="ml-2 text-gray-500 font-normal">{Math.round(entry.sentiment)}</span>
             </span>
           </div>
         )}
@@ -367,7 +367,11 @@ function JournalEntry({ entry }: Props) {
         {/* Summary now appears where journal was */}
         <Separator className="mt-5" />
         <h2 className="mt-6 text-3xl font-bold">Summary</h2>
-        <p className="mt-5 text-lg">{parsedEntry.summary ?? ""}</p>
+        {error ? (
+          <div className="text-gray-500">No summary available for this entry.</div>
+        ) : (
+          <p className="mt-5 text-lg">{parsedEntry?.summary ?? ""}</p>
+        )}
       </div>
       <Separator className="mt-5" />
       {/* Negative phrasing section */}
@@ -379,10 +383,18 @@ function JournalEntry({ entry }: Props) {
         ) : (
           <>
             {/* Highlighted journal text remains above */}
-            <div className="mb-4 p-3 bg-gray-50 rounded border cursor-pointer hover:bg-red-50 transition" title="Click to improve sentiment"
+            <div
+              className="mb-4 p-3 bg-gray-50 rounded border transition"
+              title={negativePhrases.length > 0 ? "Click to improve sentiment" : "No negative phrases detected"}
               onClick={() => {
-                setShowImprove(true);
-                handleImproveSentiment();
+                if (negativePhrases.length > 0 && !hasReframed && entry?.isOpen !== 'closed') {
+                  setShowImprove(true);
+                  handleImproveSentiment();
+                }
+              }}
+              style={{
+                opacity: negativePhrases.length > 0 && !hasReframed && entry?.isOpen !== 'closed' ? 1 : 0.5,
+                pointerEvents: negativePhrases.length > 0 && !hasReframed && entry?.isOpen !== 'closed' ? 'auto' : 'none',
               }}
             >
               <h4 className="font-semibold mb-2 text-base">Journal with Highlights:</h4>
@@ -403,11 +415,12 @@ function JournalEntry({ entry }: Props) {
                   return <span dangerouslySetInnerHTML={{ __html: highlighted }} />;
                 })()}
               </div>
-              <div className="text-xs text-gray-500 mt-2">Click to improve sentiment</div>
+              <div className="text-xs text-gray-500 mt-2">
+                {negativePhrases.length > 0 ? "Click to improve sentiment" : "No negative phrases detected."}
+              </div>
             </div>
-
             {/* Side-by-side negative/suggested pairs, only show after clicking highlights */}
-            {showImprove && (
+            {showImprove && negativePhrases.length > 0 && (
               <div className="mb-6">
                 <h4 className="font-semibold mb-2 text-base">AI Suggestions for Negative Sentences</h4>
                 <div className="space-y-4">
@@ -498,8 +511,6 @@ function JournalEntry({ entry }: Props) {
                 )}
               </div>
             )}
-
-            {/* No full rewrite section; all editing is inline above */}
           </>
         )}
       </div>

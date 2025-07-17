@@ -106,20 +106,18 @@ function NewDayJournal({ user, entry, forceCountdown = false, onPrev, onNext, sh
 
   const handleUpdateEntry = async (entry?: Entry) => {
     if (!user) return router.push("/login");
-    let journalID;
     setLoading(true);
-    if (!entry) {
-      journalID = uuidv4();
-    } else {
-      journalID = entry.id;
+    // Always use the current day's entry id
+    const journalID = entry && entry.id ? entry.id : (entryExists && entry ? entry.id : null);
+    if (!journalID) {
+      setLoading(false);
+      toast.error("No entry found for today.");
+      return;
     }
-    console.log(entry);
     toast.success("Let's wrap up the day!", {
       description: "Updating today's journal entry",
     });
-
     await followUpEntryAction(questionText, journalID, new Date());
-
     router.push(`/follow-up?entryId=${journalID}`);
   };
 
@@ -150,62 +148,28 @@ function NewDayJournal({ user, entry, forceCountdown = false, onPrev, onNext, sh
   // All other cases: show the appropriate entry UI
   if (entryExists) {
     const sentiment = entry && typeof entry.sentiment === 'number' ? entry.sentiment : null;
-    const navHeader = entry ? (
-      <div className="w-full max-w-4xl mx-auto mb-2">
-        <div className="bg-gray-200 px-6 py-4 rounded-2xl shadow-sm">
-          <div className="flex items-center justify-between w-full gap-12">
-            {/* Previous chevron */}
-            {showPrev ? (
-              <button className="p-2 rounded-full hover:bg-gray-300" aria-label="Previous entry" onClick={onPrev}>
-                <ChevronLeft className="w-7 h-7 text-black" />
-              </button>
-            ) : <div className="w-9 h-9" />} {/* Reserve space if no button */}
-            <h1 className="text-3xl font-medium text-center min-w-[220px]">
-              {entry.createdAt ? new Date(entry.createdAt).toLocaleDateString("en-US", { year: "numeric", month: "long", day: "numeric" }) : ""}
-            </h1>
-            {/* Next chevron */}
-            {showNext ? (
-              <button className="p-2 rounded-full hover:bg-gray-300" aria-label="Next entry" onClick={onNext}>
-                <ChevronRight className="w-7 h-7 text-black" />
-              </button>
-            ) : <div className="w-9 h-9" />} {/* Reserve space if no button */}
-          </div>
-        </div>
-      </div>
-    ) : null;
-    const positivityBar = sentiment !== null ? (
-      <div className="w-full max-w-4xl mx-auto mt-2">
-        <div className="w-full py-2 text-base font-semibold bg-secondary text-secondary-foreground text-center">
-          {`Positivity Score: ${Math.round(sentiment)}`}
-        </div>
-      </div>
-    ) : null;
     switch (entry?.isOpen) {
       case "open":
       case "partial_open":
         return (
           <>
-            {navHeader}
             <div className="w-full max-w-4xl mx-auto">
               <IncompleteEntry entryId={entry.id} />
             </div>
-            {positivityBar}
           </>
         );
       case "partial":
         return (
           <>
-            {navHeader}
             <div className="w-full max-w-4xl mx-auto">
               <PartialEntry
-                onSubmit={handleUpdateEntry}
+                onSubmit={() => handleUpdateEntry(entry)}
                 questionText={questionText}
                 setQuestionText={setQuestionText}
                 textareaRef={textareaRef}
                 entry={entry}
               />
             </div>
-            {positivityBar}
           </>
         );
       case "closed":
@@ -214,7 +178,7 @@ function NewDayJournal({ user, entry, forceCountdown = false, onPrev, onNext, sh
   } else {
     return isAfterFive ? (
       <PartialEntry
-        onSubmit={handleUpdateEntry}
+        onSubmit={() => handleUpdateEntry(entry)}
         questionText={questionText}
         setQuestionText={setQuestionText}
         textareaRef={textareaRef}
